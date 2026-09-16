@@ -1,0 +1,33 @@
+const Comment = require("../models/Comment");
+const Post = require("../models/Post");
+const AppError = require("../utils/AppError");
+const { asyncHandler } = require("../middleware/errorHandler");
+
+const addComment = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+  const { text } = req.body;
+  if (!text) throw new AppError("Comment text is required", 400);
+  const post = await Post.findById(postId);
+  if (!post) throw new AppError("Post not found", 404);
+  const comment = await Comment.create({ text, authorId: req.user._id, postId });
+  res.status(201).json({ comment });
+});
+
+const deleteComment = asyncHandler(async (req, res) => {
+  const comment = await Comment.findById(req.params.commentId);
+  if (!comment) throw new AppError("Comment not found", 404);
+  if (comment.authorId.toString() !== req.user._id.toString()) {
+    throw new AppError("Not authorized to delete this comment", 403);
+  }
+  await comment.deleteOne();
+  res.json({ message: "Comment deleted" });
+});
+
+const getComments = asyncHandler(async (req, res) => {
+  const comments = await Comment.find({ postId: req.params.postId })
+    .sort({ createdAt: 1 })
+    .populate("authorId", "name username profilePicture");
+  res.json({ comments });
+});
+
+module.exports = { addComment, deleteComment, getComments };
