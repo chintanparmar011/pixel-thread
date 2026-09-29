@@ -125,7 +125,3 @@ npm run test:backend
 
 ---
 
-## 👥 Authors
-- **Parmar Chintan** (24CEUCG086) - 24ceucg086@ddu.ac.in
-- **Parmar Erin** (24CEUGC087) - 24ceucg087@ddu.ac.in
-- **Instructor**: Ankit P. Vaishnav
