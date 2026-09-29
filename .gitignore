@@ -2,21 +2,42 @@
 node_modules/
 */node_modules/
 
-# Environment Variables
+# Environment Variables & Secrets
 .env
+.env.*
 */.env
+*/.env.*
 *.env.local
 
-# Production Build Output
+# Preserve example environment templates
+!.env.example
+!*/.env.example
+
+# Production Build Outputs
 dist/
 */dist/
+build/
+*/build/
 
-# Logs
+# Logs & Debugging
 *.log
 */logs/
 npm-debug.log*
 yarn-debug.log*
+pnpm-debug.log*
 
-# System Files
+# Test Coverage
+coverage/
+*/coverage/
+
+# IDE & Editor Settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Operating System Files
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
