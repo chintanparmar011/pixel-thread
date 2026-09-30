@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { userAPI, socialAPI } from '../services/api';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, UserPlus, UserCheck, MessageSquare, Loader2 } from 'lucide-react';
+import { Avatar } from '../components/Avatar';
 
 export const SearchPage = () => {
   const [query, setQuery] = useState('');
@@ -99,13 +100,7 @@ export const SearchPage = () => {
           {users.map((u) => (
             <div key={u._id} className="user-card">
               <Link to={`/profile/${u.username}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <div className="avatar">
-                  {u.profilePicture ? (
-                    <img src={u.profilePicture} alt={u.name} />
-                  ) : (
-                    u.name.charAt(0).toUpperCase()
-                  )}
-                </div>
+                <Avatar src={u.profilePicture} size={48} style={{ margin: '0 auto 0.6rem' }} />
                 <h3>{u.name}</h3>
                 <span className="user-handle">@{u.username}</span>
               </Link>

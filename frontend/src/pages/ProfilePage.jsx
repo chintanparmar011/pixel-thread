@@ -11,8 +11,11 @@ import {
   Camera, 
   Loader2, 
   X, 
-  Trash2 
+  Trash2,
+  Send
 } from 'lucide-react';
+import { Avatar } from '../components/Avatar';
+import { FollowListModal } from '../components/FollowListModal';
 
 export const ProfilePage = () => {
   const { username } = useParams();
@@ -21,6 +24,16 @@ export const ProfilePage = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Followers / Following Modal
+  const [followModalOpen, setFollowModalOpen] = useState(false);
+  const [followModalTab, setFollowModalTab] = useState('followers');
+
+  // Comments & Likes state for profile posts
+  const [activeCommentPostId, setActiveCommentPostId] = useState(null);
+  const [commentsMap, setCommentsMap] = useState({});
+  const [commentInputs, setCommentInputs] = useState({});
+  const [commentLoading, setCommentLoading] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
@@ -129,6 +142,78 @@ export const ProfilePage = () => {
     }
   };
 
+  const handleToggleLike = async (postId) => {
+    try {
+      const data = await socialAPI.toggleLike(postId);
+      setPosts((prev) =>
+        prev.map((p) =>
+          p._id === postId
+            ? { ...p, isLiked: data.liked, likesCount: data.likeCount }
+            : p
+        )
+      );
+    } catch (err) {
+      console.error('Failed to toggle like:', err.message);
+    }
+  };
+
+  const handleToggleComments = async (postId) => {
+    if (activeCommentPostId === postId) {
+      setActiveCommentPostId(null);
+      return;
+    }
+    setActiveCommentPostId(postId);
+    if (!commentsMap[postId]) {
+      try {
+        setCommentLoading(true);
+        const data = await socialAPI.getComments(postId);
+        setCommentsMap((prev) => ({ ...prev, [postId]: data.comments || [] }));
+      } catch (err) {
+        console.error('Failed to load comments:', err.message);
+      } finally {
+        setCommentLoading(false);
+      }
+    }
+  };
+
+  const handleAddComment = async (postId) => {
+    const text = commentInputs[postId]?.trim();
+    if (!text) return;
+    try {
+      const data = await socialAPI.addComment(postId, text);
+      setCommentsMap((prev) => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), data.comment],
+      }));
+      setCommentInputs((prev) => ({ ...prev, [postId]: '' }));
+      setPosts((prev) =>
+        prev.map((p) =>
+          p._id === postId ? { ...p, commentsCount: (p.commentsCount || 0) + 1 } : p
+        )
+      );
+    } catch (err) {
+      alert(err.message || 'Failed to add comment');
+    }
+  };
+
+  const handleDeleteComment = async (postId, commentId) => {
+    if (!window.confirm('Delete this comment?')) return;
+    try {
+      await socialAPI.deleteComment(commentId);
+      setCommentsMap((prev) => ({
+        ...prev,
+        [postId]: (prev[postId] || []).filter((c) => c._id !== commentId),
+      }));
+      setPosts((prev) =>
+        prev.map((p) =>
+          p._id === postId ? { ...p, commentsCount: Math.max(0, (p.commentsCount || 0) - 1) } : p
+        )
+      );
+    } catch (err) {
+      alert(err.message || 'Failed to delete comment');
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-secondary)' }}>
@@ -155,13 +240,7 @@ export const ProfilePage = () => {
       {/* Profile Header Card */}
       <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1.2rem' }}>
-          <div className="avatar" style={{ width: '84px', height: '84px', fontSize: '2rem' }}>
-            {profileData.profilePicture ? (
-              <img src={profileData.profilePicture} alt={profileData.name} />
-            ) : (
-              profileData.name.charAt(0).toUpperCase()
-            )}
-          </div>
+          <Avatar src={profileData.profilePicture} size={84} />
 
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -214,11 +293,27 @@ export const ProfilePage = () => {
             <span className="stat-value">{profileData.postsCount || 0}</span>
             <span className="stat-label">Posts</span>
           </div>
-          <div className="stat-item">
+          <div
+            className="stat-item"
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => {
+              setFollowModalTab('followers');
+              setFollowModalOpen(true);
+            }}
+            title="Click to view followers"
+          >
             <span className="stat-value">{profileData.followersCount || 0}</span>
             <span className="stat-label">Followers</span>
           </div>
-          <div className="stat-item">
+          <div
+            className="stat-item"
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => {
+              setFollowModalTab('following');
+              setFollowModalOpen(true);
+            }}
+            title="Click to view following"
+          >
             <span className="stat-value">{profileData.followingCount || 0}</span>
             <span className="stat-label">Following</span>
           </div>
@@ -237,13 +332,7 @@ export const ProfilePage = () => {
           <div key={post._id} className="card">
             <div className="post-header" style={{ justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                <div className="avatar">
-                  {profileData.profilePicture ? (
-                    <img src={profileData.profilePicture} alt="" />
-                  ) : (
-                    profileData.name.charAt(0)
-                  )}
-                </div>
+                <Avatar src={profileData.profilePicture} size={40} />
                 <div>
                   <div style={{ fontWeight: 600 }}>{profileData.name}</div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
@@ -257,6 +346,7 @@ export const ProfilePage = () => {
                   onClick={() => handleDeletePost(post._id)}
                   className="btn btn-secondary btn-sm"
                   style={{ padding: '0.3rem', color: '#f87171' }}
+                  title="Delete post"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -267,15 +357,151 @@ export const ProfilePage = () => {
             {post.image && <img src={post.image} alt="" className="post-media" />}
 
             <div className="post-footer">
-              <span className="engagement-btn">
-                <Heart size={16} fill={post.isLiked ? '#f43f5e' : 'none'} color={post.isLiked ? '#f43f5e' : 'currentColor'} />
+              <button
+                className="engagement-btn"
+                onClick={() => handleToggleLike(post._id)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'inherit',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  fontSize: '0.85rem',
+                }}
+              >
+                <Heart
+                  size={18}
+                  fill={post.isLiked ? '#f43f5e' : 'none'}
+                  color={post.isLiked ? '#f43f5e' : 'currentColor'}
+                />
                 <span>{post.likesCount || 0} Likes</span>
-              </span>
-              <span className="engagement-btn">
-                <MessageSquare size={16} />
+              </button>
+              <button
+                className="engagement-btn"
+                onClick={() => handleToggleComments(post._id)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'inherit',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  fontSize: '0.85rem',
+                }}
+              >
+                <MessageSquare size={18} />
                 <span>{post.commentsCount || 0} Comments</span>
-              </span>
+              </button>
             </div>
+
+            {/* Comments Section */}
+            {activeCommentPostId === post._id && (
+              <div
+                className="comments-section"
+                style={{
+                  marginTop: '1rem',
+                  borderTop: '1px solid var(--border-color)',
+                  paddingTop: '0.8rem',
+                }}
+              >
+                {commentLoading && !commentsMap[post._id] ? (
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                    Loading comments...
+                  </p>
+                ) : (commentsMap[post._id] || []).length === 0 ? (
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.8rem' }}>
+                    No comments yet. Start the conversation!
+                  </p>
+                ) : (
+                  (commentsMap[post._id] || []).map((c) => (
+                    <div
+                      key={c._id}
+                      className="comment-item"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.6rem',
+                        marginBottom: '0.7rem',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', flex: 1, minWidth: 0 }}>
+                        <Link
+                          to={`/profile/${c.authorId?.username}`}
+                          style={{ textDecoration: 'none', color: 'inherit', flexShrink: 0 }}
+                          title={`Visit @${c.authorId?.username}'s profile`}
+                        >
+                          <Avatar src={c.authorId?.profilePicture} size={28} />
+                        </Link>
+                        <div
+                          className="comment-bubble"
+                          style={{
+                            backgroundColor: 'var(--bg-secondary)',
+                            padding: '0.5rem 0.8rem',
+                            borderRadius: '12px',
+                            flex: 1,
+                            minWidth: 0,
+                          }}
+                        >
+                          <Link
+                            to={`/profile/${c.authorId?.username}`}
+                            style={{
+                              fontWeight: 600,
+                              fontSize: '0.8rem',
+                              textDecoration: 'none',
+                              color: 'inherit',
+                              display: 'inline-block',
+                              marginBottom: '0.2rem',
+                            }}
+                            title={`Visit @${c.authorId?.username}'s profile`}
+                          >
+                            @{c.authorId?.username || 'user'}
+                          </Link>
+                          <div style={{ fontSize: '0.85rem', wordBreak: 'break-word' }}>{c.text}</div>
+                        </div>
+                      </div>
+
+                      {(c.authorId?._id === currentUser?.id || isSelf || currentUser?.userType === 'Admin') && (
+                        <button
+                          onClick={() => handleDeleteComment(post._id, c._id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            padding: '0.2rem',
+                            marginLeft: '0.4rem',
+                            flexShrink: 0,
+                          }}
+                          title="Delete comment"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
+
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem' }}>
+                  <input
+                    type="text"
+                    className="text-input"
+                    placeholder="Write a comment..."
+                    value={commentInputs[post._id] || ''}
+                    onChange={(e) =>
+                      setCommentInputs({ ...commentInputs, [post._id]: e.target.value })
+                    }
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post._id)}
+                  />
+                  <button onClick={() => handleAddComment(post._id)} className="btn btn-sm">
+                    <Send size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ))
       )}
@@ -313,13 +539,7 @@ export const ProfilePage = () => {
             <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {/* Avatar Selector from Device */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div className="avatar" style={{ width: '64px', height: '64px', position: 'relative' }}>
-                  {editAvatarPreview ? (
-                    <img src={editAvatarPreview} alt="Avatar preview" />
-                  ) : (
-                    editName.charAt(0) || 'U'
-                  )}
-                </div>
+                <Avatar src={editAvatarPreview || profileData.profilePicture} size={64} />
 
                 <div>
                   <input
@@ -380,6 +600,16 @@ export const ProfilePage = () => {
           </div>
         </div>
       )}
+
+      {/* Followers & Following Modal */}
+      <FollowListModal
+        isOpen={followModalOpen}
+        onClose={() => setFollowModalOpen(false)}
+        userId={profileData.id}
+        initialTab={followModalTab}
+        currentUserId={currentUser?.id}
+        onFollowChange={fetchProfile}
+      />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, UserPlus, Camera, X } from 'lucide-react';
+import { Avatar } from '../components/Avatar';
 
 export const SignupPage = () => {
   const { signup } = useAuth();
@@ -93,12 +94,8 @@ export const SignupPage = () => {
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
-            <div className="avatar" style={{ width: '70px', height: '70px', position: 'relative' }}>
-              {avatarPreview ? (
-                <img src={avatarPreview} alt="Device avatar" />
-              ) : (
-                name.charAt(0) || 'U'
-              )}
+            <div style={{ position: 'relative' }}>
+              <Avatar src={avatarPreview} size={70} />
               {avatarPreview && (
                 <button
                   type="button"
@@ -118,6 +115,7 @@ export const SignupPage = () => {
                     justifyContent: 'center',
                     cursor: 'pointer',
                   }}
+                  title="Remove avatar"
                 >
                   <X size={12} />
                 </button>

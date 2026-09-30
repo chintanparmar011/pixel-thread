@@ -9,6 +9,8 @@ import {
   LogOut 
 } from 'lucide-react';
 
+import { Avatar } from './Avatar';
+
 export const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -74,13 +76,7 @@ export const Navbar = () => {
           to={`/profile/${user.username}`} 
           style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none', color: 'inherit' }}
         >
-          <div className="avatar" style={{ width: '36px', height: '36px', fontSize: '0.9rem' }}>
-            {user.profilePicture ? (
-              <img src={user.profilePicture} alt={user.name} />
-            ) : (
-              user.name.charAt(0).toUpperCase()
-            )}
-          </div>
+          <Avatar src={user.profilePicture} size={36} />
           <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>@{user.username}</span>
         </Link>
 

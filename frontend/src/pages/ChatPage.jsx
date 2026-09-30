@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { messageAPI, userAPI } from '../services/api';
+import { messageAPI, userAPI, socialAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
-import { Send, Loader2, MessageSquare } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Search, X, Users } from 'lucide-react';
+import { Avatar } from '../components/Avatar';
 
 export const ChatPage = () => {
   const { user: currentUser } = useAuth();
@@ -12,6 +13,8 @@ export const ChatPage = () => {
   const targetUserIdFromUrl = searchParams.get('userId');
 
   const [conversations, setConversations] = useState([]);
+  const [contacts, setContacts] = useState([]); // followers and following contacts
+  const [searchQuery, setSearchQuery] = useState('');
   const [activePartner, setActivePartner] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -60,6 +63,54 @@ export const ChatPage = () => {
 
     fetchConversations();
   }, [targetUserIdFromUrl]);
+
+  // Load followers & following to allow starting chats directly
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const loadContacts = async () => {
+      try {
+        const [followersRes, followingRes] = await Promise.all([
+          socialAPI.getFollowers(currentUser.id),
+          socialAPI.getFollowing(currentUser.id),
+        ]);
+        const combined = [...(followersRes.followers || []), ...(followingRes.following || [])];
+        const map = new Map();
+        combined.forEach((u) => {
+          const uid = u._id || u.id;
+          if (uid && uid !== currentUser.id && !map.has(uid)) {
+            map.set(uid, {
+              id: uid,
+              name: u.name,
+              username: u.username,
+              profilePicture: u.profilePicture,
+              bio: u.bio,
+            });
+          }
+        });
+        setContacts(Array.from(map.values()));
+      } catch (err) {
+        console.error('Failed to load contacts for chat:', err.message);
+      }
+    };
+    loadContacts();
+  }, [currentUser?.id]);
+
+  const handleSelectContact = (contact) => {
+    const contactId = contact.id || contact._id;
+    const existing = conversations.find((c) => c.partner?.id === contactId);
+    if (existing) {
+      setActivePartner(existing.partner);
+    } else {
+      setActivePartner({
+        id: contactId,
+        name: contact.name,
+        username: contact.username,
+        profilePicture: contact.profilePicture,
+      });
+      setMessages([]);
+    }
+    setSearchQuery('');
+  };
 
   useEffect(() => {
     if (!activePartner) return;
@@ -187,6 +238,20 @@ export const ChatPage = () => {
     }
   };
 
+  const query = searchQuery.trim().toLowerCase();
+  const filteredConversations = conversations.filter((c) => {
+    if (!query) return true;
+    const name = c.partner?.name?.toLowerCase() || '';
+    const username = c.partner?.username?.toLowerCase() || '';
+    return name.includes(query) || username.includes(query);
+  });
+
+  const filteredContacts = contacts.filter((c) => {
+    const name = c.name?.toLowerCase() || '';
+    const username = c.username?.toLowerCase() || '';
+    return name.includes(query) || username.includes(query);
+  });
+
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', width: '100%' }}>
       <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
@@ -196,94 +261,226 @@ export const ChatPage = () => {
       </div>
 
       <div className="chat-container">
-        {/* Left Sidebar: Conversations */}
+        {/* Left Sidebar: Conversations & Contacts Search */}
         <div className="chat-sidebar">
-          <div
-            style={{
-              padding: '0.8rem 1rem',
-              borderBottom: '1px solid var(--border-color)',
-              fontWeight: '600',
-              fontSize: '0.85rem',
-              color: 'var(--text-secondary)',
-            }}
-          >
-            Recent Chats ({conversations.length})
+          {/* Search Box */}
+          <div style={{ padding: '0.8rem 1rem', borderBottom: '1px solid var(--border-color)' }}>
+            <div style={{ position: 'relative' }}>
+              <Search
+                size={16}
+                style={{
+                  position: 'absolute',
+                  left: '0.75rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-secondary)',
+                }}
+              />
+              <input
+                type="text"
+                className="text-input"
+                style={{ paddingLeft: '2.4rem', paddingRight: searchQuery ? '2.4rem' : '0.8rem', fontSize: '0.85rem' }}
+                placeholder="Search chats or find followers..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  style={{
+                    position: 'absolute',
+                    right: '0.75rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                  }}
+                  title="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
           </div>
 
           {loadingConvos ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
               <Loader2 size={24} className="spin" style={{ margin: '0 auto' }} />
             </div>
-          ) : conversations.length === 0 ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-              No messages yet. Find a user on Discover and start chatting!
-            </div>
           ) : (
-            conversations.map((convo) => {
-              const partner = convo.partner || {};
-              const isActive = activePartner?.id === partner.id;
-              const online = isUserOnline(partner.id);
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              {/* Recent Conversations */}
+              <div
+                style={{
+                  padding: '0.6rem 1rem 0.3rem',
+                  fontWeight: '600',
+                  fontSize: '0.75rem',
+                  color: 'var(--text-secondary)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {searchQuery ? `Matching Chats (${filteredConversations.length})` : `Recent Chats (${conversations.length})`}
+              </div>
 
-              return (
-                <div
-                  key={partner.id || Math.random()}
-                  className={`conversation-item ${isActive ? 'active' : ''}`}
-                  onClick={() => setActivePartner(partner)}
-                >
-                  <div className="avatar" style={{ width: '38px', height: '38px', position: 'relative' }}>
-                    {partner.profilePicture ? (
-                      <img src={partner.profilePicture} alt="" />
-                    ) : (
-                      (partner.name || 'U').charAt(0)
-                    )}
-                    {online && (
-                      <span
-                        style={{
-                          position: 'absolute',
-                          bottom: 0,
-                          right: 0,
-                          width: '10px',
-                          height: '10px',
-                          borderRadius: '50%',
-                          backgroundColor: '#10b981',
-                          border: '2px solid var(--bg-card)',
-                        }}
-                      />
-                    )}
-                  </div>
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{partner.name}</div>
-                    <div
-                      style={{
-                        color: 'var(--text-secondary)',
-                        fontSize: '0.8rem',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {convo.lastMessage?.text || 'Click to chat'}
-                    </div>
-                  </div>
-
-                  {convo.unreadCount > 0 && (
-                    <span
-                      style={{
-                        backgroundColor: 'var(--accent-color)',
-                        color: 'white',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        padding: '0.15rem 0.45rem',
-                        borderRadius: '9999px',
-                      }}
-                    >
-                      {convo.unreadCount}
-                    </span>
-                  )}
+              {filteredConversations.length === 0 && !searchQuery ? (
+                <div style={{ padding: '1.2rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                  No active conversations yet. Pick a follower below to start chatting!
                 </div>
-              );
-            })
+              ) : (
+                filteredConversations.map((convo) => {
+                  const partner = convo.partner || {};
+                  const isActive = activePartner?.id === partner.id;
+                  const online = isUserOnline(partner.id);
+
+                  return (
+                    <div
+                      key={partner.id || Math.random()}
+                      className={`conversation-item ${isActive ? 'active' : ''}`}
+                      onClick={() => {
+                        setActivePartner(partner);
+                        setSearchQuery('');
+                      }}
+                    >
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        <Avatar src={partner.profilePicture} size={38} />
+                        {online && (
+                          <span
+                            style={{
+                              position: 'absolute',
+                              bottom: 0,
+                              right: 0,
+                              width: '10px',
+                              height: '10px',
+                              borderRadius: '50%',
+                              backgroundColor: '#10b981',
+                              border: '2px solid var(--bg-card)',
+                            }}
+                          />
+                        )}
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{partner.name}</div>
+                        <div
+                          style={{
+                            color: 'var(--text-secondary)',
+                            fontSize: '0.8rem',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {convo.lastMessage?.text || 'Click to chat'}
+                        </div>
+                      </div>
+
+                      {convo.unreadCount > 0 && (
+                        <span
+                          style={{
+                            backgroundColor: 'var(--accent-color)',
+                            color: 'white',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            padding: '0.15rem 0.45rem',
+                            borderRadius: '9999px',
+                          }}
+                        >
+                          {convo.unreadCount}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+
+              {/* Followers & Following Contacts Section */}
+              {contacts.length > 0 && (
+                <>
+                  <div
+                    style={{
+                      padding: '0.9rem 1rem 0.3rem',
+                      fontWeight: '600',
+                      fontSize: '0.75rem',
+                      color: 'var(--text-secondary)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      borderTop: '1px solid var(--border-color)',
+                      marginTop: '0.4rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                    }}
+                  >
+                    <Users size={14} />
+                    <span>
+                      {searchQuery
+                        ? `Followers / Following (${filteredContacts.length})`
+                        : `Start Chat with Follower (${contacts.length})`}
+                    </span>
+                  </div>
+
+                  {filteredContacts.length === 0 ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                      No followers or following match "{searchQuery}"
+                    </div>
+                  ) : (
+                    filteredContacts.map((contact) => {
+                      const isActive = activePartner?.id === contact.id;
+                      const online = isUserOnline(contact.id);
+
+                      return (
+                        <div
+                          key={contact.id}
+                          className={`conversation-item ${isActive ? 'active' : ''}`}
+                          onClick={() => handleSelectContact(contact)}
+                          title={`Start chat with ${contact.name}`}
+                        >
+                          <div style={{ position: 'relative', flexShrink: 0 }}>
+                            <Avatar src={contact.profilePicture} size={38} />
+                            {online && (
+                              <span
+                                style={{
+                                  position: 'absolute',
+                                  bottom: 0,
+                                  right: 0,
+                                  width: '10px',
+                                  height: '10px',
+                                  borderRadius: '50%',
+                                  backgroundColor: '#10b981',
+                                  border: '2px solid var(--bg-card)',
+                                }}
+                              />
+                            )}
+                          </div>
+
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{contact.name}</div>
+                            <div
+                              style={{
+                                color: 'var(--text-secondary)',
+                                fontSize: '0.78rem',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              @{contact.username}
+                            </div>
+                          </div>
+
+                          <span style={{ fontSize: '0.75rem', color: '#818cf8', fontWeight: 500 }}>
+                            Chat
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                </>
+              )}
+            </div>
           )}
         </div>
 
@@ -293,13 +490,7 @@ export const ChatPage = () => {
             <>
               {/* Chat Header */}
               <div className="chat-header">
-                <div className="avatar" style={{ width: '38px', height: '38px' }}>
-                  {activePartner.profilePicture ? (
-                    <img src={activePartner.profilePicture} alt="" />
-                  ) : (
-                    (activePartner.name || 'U').charAt(0)
-                  )}
-                </div>
+                <Avatar src={activePartner.profilePicture} size={38} />
                 <div>
                   <div style={{ fontWeight: 600 }}>{activePartner.name}</div>
                   <div style={{ fontSize: '0.75rem', color: isUserOnline(activePartner.id) ? '#34d399' : 'var(--text-secondary)' }}>

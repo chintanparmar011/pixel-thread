@@ -3,13 +3,15 @@ const generateToken = require("../utils/generateToken");
 const AppError = require("../utils/AppError");
 const { asyncHandler } = require("../middleware/errorHandler");
 
+const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23334155'/><circle cx='50' cy='38' r='18' fill='%2394a3b8'/><path d='M20 84c0-16.57 13.43-30 30-30s30 13.43 30 30z' fill='%2394a3b8'/></svg>";
+
 const sanitizeUser = (user) => ({
   id: user._id,
   name: user.name,
   username: user.username,
   email: user.email,
   bio: user.bio || "",
-  profilePicture: user.profilePicture || "",
+  profilePicture: user.profilePicture || DEFAULT_AVATAR,
   status: user.status,
   userType: user.userType || "User",
   createdAt: user.createdAt,
@@ -21,7 +23,7 @@ const signup = asyncHandler(async (req, res) => {
     throw new AppError("name, username, email and password are required", 400);
   }
 
-  const profilePicture = req.file ? req.file.path : (req.body.profilePicture || "");
+  const profilePicture = req.file ? req.file.path : (req.body.profilePicture || DEFAULT_AVATAR);
   const user = await User.create({
     name,
     username,

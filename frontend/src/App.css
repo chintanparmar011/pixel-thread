@@ -389,6 +389,13 @@ body {
 .stat-item {
   display: flex;
   flex-direction: column;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.stat-item:hover {
+  background-color: rgba(255, 255, 255, 0.06);
 }
 
 .stat-value {

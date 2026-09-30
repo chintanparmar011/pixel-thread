@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { CreatePost } from '../components/CreatePost';
 import { Link } from 'react-router-dom';
 import { Heart, MessageSquare, Trash2, Loader2, Send } from 'lucide-react';
+import { Avatar } from '../components/Avatar';
 
 export const FeedPage = () => {
   const { user } = useAuth();
@@ -142,13 +143,7 @@ export const FeedPage = () => {
                   to={`/profile/${author.username}`}
                   style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', textDecoration: 'none', color: 'inherit' }}
                 >
-                  <div className="avatar">
-                    {author.profilePicture ? (
-                      <img src={author.profilePicture} alt={author.name} />
-                    ) : (
-                      (author.name || 'U').charAt(0).toUpperCase()
-                    )}
-                  </div>
+                  <Avatar src={author.profilePicture} size={40} />
                   <div className="post-user-info">
                     <span className="user-name">{author.name || 'Anonymous'}</span>
                     <span className="user-handle">
@@ -211,17 +206,30 @@ export const FeedPage = () => {
                     </p>
                   ) : (
                     postComments.map((c) => (
-                      <div key={c._id} className="comment-item">
-                        <div className="avatar" style={{ width: '28px', height: '28px', fontSize: '0.75rem' }}>
-                          {c.authorId?.profilePicture ? (
-                            <img src={c.authorId.profilePicture} alt="" />
-                          ) : (
-                            (c.authorId?.name || 'U').charAt(0)
-                          )}
-                        </div>
-                        <div className="comment-bubble">
-                          <div className="comment-author">@{c.authorId?.username || 'user'}</div>
-                          <div>{c.text}</div>
+                      <div key={c._id} className="comment-item" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', marginBottom: '0.7rem' }}>
+                        <Link
+                          to={`/profile/${c.authorId?.username}`}
+                          style={{ textDecoration: 'none', color: 'inherit', flexShrink: 0 }}
+                          title={`Visit @${c.authorId?.username}'s profile`}
+                        >
+                          <Avatar src={c.authorId?.profilePicture} size={28} />
+                        </Link>
+                        <div className="comment-bubble" style={{ backgroundColor: 'var(--bg-secondary)', padding: '0.5rem 0.8rem', borderRadius: '12px', flex: 1 }}>
+                          <Link
+                            to={`/profile/${c.authorId?.username}`}
+                            style={{
+                              fontWeight: 600,
+                              fontSize: '0.8rem',
+                              textDecoration: 'none',
+                              color: 'inherit',
+                              display: 'inline-block',
+                              marginBottom: '0.2rem',
+                            }}
+                            title={`Visit @${c.authorId?.username}'s profile`}
+                          >
+                            @{c.authorId?.username || 'user'}
+                          </Link>
+                          <div style={{ fontSize: '0.85rem', wordBreak: 'break-word' }}>{c.text}</div>
                         </div>
                       </div>
                     ))
