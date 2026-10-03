@@ -1,19 +1,43 @@
+import { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { 
   Home, 
   Search, 
   MessageSquare, 
   User as UserIcon, 
   ShieldAlert, 
-  LogOut 
+  LogOut,
+  Bell
 } from 'lucide-react';
 
 import { Avatar } from './Avatar';
+import { NotificationDropdown } from './NotificationDropdown';
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
+
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close notification dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
 
   const handleLogout = async () => {
     await logout();
@@ -71,7 +95,28 @@ export const Navbar = () => {
         )}
       </nav>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
+        {/* Notification Bell with Dropdown */}
+        <div ref={dropdownRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowDropdown((prev) => !prev)}
+            className={`notification-bell-btn ${showDropdown ? 'active' : ''}`}
+            title="Notifications"
+            aria-label="Notifications"
+          >
+            <Bell size={20} />
+            {unreadCount > 0 && (
+              <span className="notification-badge">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {showDropdown && (
+            <NotificationDropdown onClose={() => setShowDropdown(false)} />
+          )}
+        </div>
+
         <Link 
           to={`/profile/${user.username}`} 
           style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none', color: 'inherit' }}

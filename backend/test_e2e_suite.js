@@ -310,8 +310,8 @@ const runTests = async () => {
   }
   console.log(`  ✓ Audit trail logged ${dataLogs.logs.length} admin actions (latest: ${dataLogs.logs[0].actionType})`);
 
-  // Admin delete post
-  console.log('[14/14] Testing Admin Content Moderation (Delete Post)...');
+  // Test 14: Admin Content Moderation
+  console.log('[14/15] Testing Admin Content Moderation (Delete Post)...');
   const resAdminDeletePost = await fetch(`${BASE_URL}/admin/posts/${createdPostId}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${adminToken}` },
@@ -322,8 +322,115 @@ const runTests = async () => {
   }
   console.log(`  ✓ Post moderated and deleted by Admin`);
 
+  // Test 15: Notification System (Follow, Like, Comment, Message, Read, Read-All, Delete)
+  console.log('[15/15] Testing Notifications Lifecycle (Likes, Messages, Follows, Comments)...');
+  const resNotifs = await fetch(`${BASE_URL}/notifications?page=1&limit=20`, {
+    headers: { Authorization: `Bearer ${u2Token}` },
+  });
+  const dataNotifs = await resNotifs.json();
+  if (!resNotifs.ok) throw new Error(`Fetch notifications failed: ${JSON.stringify(dataNotifs)}`);
+  
+  const notifs = dataNotifs.notifications;
+  console.log(`  ✓ User 2 received ${notifs.length} total notifications`);
+
+  const hasFollow = notifs.some((n) => n.type === 'follow');
+  const hasLike = notifs.some((n) => n.type === 'like');
+  const hasComment = notifs.some((n) => n.type === 'comment');
+  const hasMessage = notifs.some((n) => n.type === 'message');
+
+  if (!hasFollow || !hasLike || !hasComment || !hasMessage) {
+    throw new Error(`Missing expected notification types: follow=${hasFollow}, like=${hasLike}, comment=${hasComment}, message=${hasMessage}`);
+  }
+  console.log(`  ✓ Verified all notification types present: follow, like, comment, message`);
+
+  // Verify unread count endpoint
+  const resUnread = await fetch(`${BASE_URL}/notifications/unread-count`, {
+    headers: { Authorization: `Bearer ${u2Token}` },
+  });
+  const dataUnread = await resUnread.json();
+  if (!resUnread.ok || dataUnread.unreadCount < 4) {
+    throw new Error(`Unexpected unread count: ${JSON.stringify(dataUnread)}`);
+  }
+  console.log(`  ✓ Unread notification count verified: ${dataUnread.unreadCount}`);
+
+  // Mark single notification as read
+  const targetNotif = notifs[0];
+  const resMarkRead = await fetch(`${BASE_URL}/notifications/${targetNotif._id}/read`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${u2Token}` },
+  });
+  const dataMarkRead = await resMarkRead.json();
+  if (!resMarkRead.ok || dataMarkRead.notification.isRead !== true) {
+    throw new Error(`Mark notification as read failed: ${JSON.stringify(dataMarkRead)}`);
+  }
+  console.log(`  ✓ Single notification marked as read (ID: ${targetNotif._id})`);
+
+  // Mark all notifications as read
+  const resMarkAll = await fetch(`${BASE_URL}/notifications/read-all`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${u2Token}` },
+  });
+  const dataMarkAll = await resMarkAll.json();
+  if (!resMarkAll.ok) throw new Error(`Mark all notifications read failed: ${JSON.stringify(dataMarkAll)}`);
+
+  const resUnreadAfter = await fetch(`${BASE_URL}/notifications/unread-count`, {
+    headers: { Authorization: `Bearer ${u2Token}` },
+  });
+  const dataUnreadAfter = await resUnreadAfter.json();
+  if (!resUnreadAfter.ok || dataUnreadAfter.unreadCount !== 0) {
+    throw new Error(`Expected 0 unread notifications, got ${dataUnreadAfter.unreadCount}`);
+  }
+  console.log(`  ✓ Mark all read verified (Unread count: 0)`);
+
+  // Delete notification
+  const resDeleteNotif = await fetch(`${BASE_URL}/notifications/${targetNotif._id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${u2Token}` },
+  });
+  const dataDeleteNotif = await resDeleteNotif.json();
+  if (!resDeleteNotif.ok) throw new Error(`Delete notification failed: ${JSON.stringify(dataDeleteNotif)}`);
+  console.log(`  ✓ Notification deleted successfully`);
+
+  // Verify like notification links directly to the liked post
+  console.log('  Testing Liked Post Linkage & Direct Retrieval...');
+  const newPostForm = new FormData();
+  newPostForm.append('text', 'Notification navigation test post');
+  const resNewPost = await fetch(`${BASE_URL}/posts`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${u1Token}` },
+    body: newPostForm,
+  });
+  const dataNewPost = await resNewPost.json();
+  const linkedPostId = dataNewPost.post._id;
+
+  // User 2 likes User 1's post
+  await fetch(`${BASE_URL}/likes/${linkedPostId}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${u2Token}` },
+  });
+
+  // User 1 fetches their notifications to get the like notification
+  const resU1Notifs = await fetch(`${BASE_URL}/notifications?limit=5`, {
+    headers: { Authorization: `Bearer ${u1Token}` },
+  });
+  const dataU1Notifs = await resU1Notifs.json();
+  const recentLike = dataU1Notifs.notifications.find((n) => n.type === 'like' && (n.post?._id === linkedPostId || n.post === linkedPostId));
+
+  if (!recentLike) throw new Error('Like notification for new post not found');
+  const postIdFromNotif = recentLike.post?._id || recentLike.post;
+
+  // Retrieve post details by ID (same API called by /post/:postId page)
+  const resPostDetail = await fetch(`${BASE_URL}/posts/${postIdFromNotif}`, {
+    headers: { Authorization: `Bearer ${u1Token}` },
+  });
+  const dataPostDetail = await resPostDetail.json();
+  if (!resPostDetail.ok || dataPostDetail.post._id !== linkedPostId) {
+    throw new Error('Failed to resolve liked post by notification post ID');
+  }
+  console.log(`  ✓ Notification directly links to post ID: ${postIdFromNotif} (Likes: ${dataPostDetail.post.likesCount})`);
+
   console.log('\n====================================');
-  console.log('  ALL 14 E2E TESTS PASSED SUCCESSFULLY!');
+  console.log('  ALL 15 E2E TESTS PASSED SUCCESSFULLY!');
   console.log('====================================\n');
 };
 

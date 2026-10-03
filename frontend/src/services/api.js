@@ -83,4 +83,12 @@ export const adminAPI = {
   getLogs: (params) => api.get('/admin/logs', { params }),
 };
 
+export const notificationAPI = {
+  getNotifications: (page = 1, limit = 30) => api.get(`/notifications?page=${page}&limit=${limit}`),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+  markAsRead: (id) => api.patch(`/notifications/${id}/read`),
+  markAllAsRead: () => api.patch('/notifications/read-all'),
+  deleteNotification: (id) => api.delete(`/notifications/${id}`),
+};
+
 export default api;

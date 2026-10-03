@@ -71,6 +71,22 @@ const initializeSocket = (httpServer) => {
         io.to(receiverId).emit("receiveMessage", populated);
         io.to(socket.userId).emit("receiveMessage", populated); // echo to sender's other tabs
 
+        // Create persistent notification for message
+        try {
+          const Notification = require("../models/Notification");
+          const notif = await Notification.create({
+            recipient: receiverId,
+            sender: socket.userId,
+            type: "message",
+            message: `@${socket.user?.username || 'user'} sent you a message: "${text.trim().substring(0, 50)}${text.trim().length > 50 ? '...' : ''}"`,
+          });
+          const populatedNotif = await Notification.findById(notif._id)
+            .populate("sender", "name username profilePicture");
+          io.to(receiverId).emit("newNotification", populatedNotif);
+        } catch (ne) {
+          // Non-blocking notification dispatch
+        }
+
         if (callback) callback({ success: true, message: populated });
       } catch (err) {
         if (callback) callback({ error: "Failed to send message" });

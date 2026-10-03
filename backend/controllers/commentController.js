@@ -18,6 +18,29 @@ const addComment = asyncHandler(async (req, res) => {
   });
 
   const populated = await Comment.findById(comment._id).populate("authorId", "name username profilePicture");
+
+  // Notify post author if not commenting on own post
+  if (post.authorId.toString() !== req.user._id.toString()) {
+    try {
+      const Notification = require("../models/Notification");
+      const notif = await Notification.create({
+        recipient: post.authorId,
+        sender: req.user._id,
+        type: "comment",
+        post: post._id,
+        message: `@${req.user.username} commented on your post: "${text.trim().substring(0, 40)}${text.trim().length > 40 ? '...' : ''}"`,
+      });
+      const populatedNotif = await Notification.findById(notif._id)
+        .populate("sender", "name username profilePicture")
+        .populate("post", "text image");
+
+      const { getIO } = require("../sockets");
+      getIO().to(post.authorId.toString()).emit("newNotification", populatedNotif);
+    } catch (e) {
+      // Non-blocking notification dispatch
+    }
+  }
+
   res.status(201).json({ comment: populated });
 });
 

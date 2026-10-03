@@ -17,6 +17,7 @@ require("./models/Like");
 require("./models/Follow");
 require("./models/Message");
 require("./models/AdminActionLog");
+require("./models/Notification");
 
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
@@ -26,6 +27,7 @@ const commentRoutes = require("./routes/commentRoutes");
 const followRoutes = require("./routes/followRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 const app = express();
 app.use(cors());
@@ -43,6 +45,7 @@ app.use("/api/comments", commentRoutes);
 app.use("/api/follows", followRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.use(errorHandler); // must stay last
 

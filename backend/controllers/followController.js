@@ -19,6 +19,25 @@ const followUser = asyncHandler(async (req, res) => {
   await Follow.create({ followerId: req.user._id, followingId: userId });
 
   const followersCount = await Follow.countDocuments({ followingId: userId });
+
+  // Notify followed user
+  try {
+    const Notification = require("../models/Notification");
+    const notif = await Notification.create({
+      recipient: userId,
+      sender: req.user._id,
+      type: "follow",
+      message: `@${req.user.username} started following you`,
+    });
+    const populated = await Notification.findById(notif._id)
+      .populate("sender", "name username profilePicture");
+
+    const { getIO } = require("../sockets");
+    getIO().to(userId.toString()).emit("newNotification", populated);
+  } catch (e) {
+    // Non-blocking notification dispatch
+  }
+
   res.status(201).json({ message: "Followed successfully", isFollowing: true, followersCount });
 });
 
