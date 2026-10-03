@@ -21,8 +21,16 @@ const commentSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    parentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Comment",
+      default: null,
+      index: true,
+    },
   },
   { timestamps: true }
 );
+
+commentSchema.index({ postId: 1, parentId: 1, createdAt: 1 });
 
 module.exports = mongoose.model("Comment", commentSchema);

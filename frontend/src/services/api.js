@@ -47,6 +47,7 @@ export const postAPI = {
   createPost: (formData) => api.post('/posts', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+  toggleRepost: (postId) => api.post(`/posts/${postId}/repost`),
   deletePost: (postId) => api.delete(`/posts/${postId}`),
 };
 
@@ -54,7 +55,7 @@ export const socialAPI = {
   toggleLike: (postId) => api.post(`/likes/${postId}`),
   getLikes: (postId) => api.get(`/likes/${postId}`),
   getComments: (postId) => api.get(`/comments/${postId}`),
-  addComment: (postId, text) => api.post(`/comments/${postId}`, { text }),
+  addComment: (postId, text, parentId = null) => api.post(`/comments/${postId}`, { text, parentId }),
   deleteComment: (commentId) => api.delete(`/comments/${commentId}`),
   followUser: (userId) => api.post(`/follows/${userId}`),
   unfollowUser: (userId) => api.delete(`/follows/${userId}`),
@@ -89,6 +90,20 @@ export const notificationAPI = {
   markAsRead: (id) => api.patch(`/notifications/${id}/read`),
   markAllAsRead: () => api.patch('/notifications/read-all'),
   deleteNotification: (id) => api.delete(`/notifications/${id}`),
+};
+
+export const groupAPI = {
+  createGroup: (formData) => api.post('/groups', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  getUserGroups: () => api.get('/groups'),
+  getGroupDetails: (groupId) => api.get(`/groups/${groupId}`),
+  updateGroup: (groupId, formData) => api.put(`/groups/${groupId}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  getGroupMessages: (groupId) => api.get(`/groups/${groupId}/messages`),
+  joinGroup: (groupId) => api.post(`/groups/${groupId}/join`),
+  leaveGroup: (groupId) => api.post(`/groups/${groupId}/leave`),
 };
 
 export default api;

@@ -1,12 +1,14 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, UserPlus, Camera, X } from 'lucide-react';
 import { Avatar } from '../components/Avatar';
 
 export const SignupPage = () => {
   const { signup } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get('redirect');
 
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
@@ -60,7 +62,11 @@ export const SignupPage = () => {
       }
 
       await signup(formData);
-      navigate('/');
+      if (redirect) {
+        navigate(decodeURIComponent(redirect));
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err.message || 'Registration failed');
     } finally {
@@ -201,7 +207,10 @@ export const SignupPage = () => {
 
         <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '1.2rem' }}>
           Already have an account?{' '}
-          <Link to="/login" style={{ color: '#818cf8', textDecoration: 'none', fontWeight: 600 }}>
+          <Link
+            to={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login'}
+            style={{ color: '#818cf8', textDecoration: 'none', fontWeight: 600 }}
+          >
             Sign In
           </Link>
         </p>

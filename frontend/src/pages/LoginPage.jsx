@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, LogIn } from 'lucide-react';
 
 export const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get('redirect');
+
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -22,7 +25,9 @@ export const LoginPage = () => {
       setLoading(true);
       setError('');
       const loggedInUser = await login(identifier, password);
-      if (loggedInUser.userType === 'Admin') {
+      if (redirect) {
+        navigate(decodeURIComponent(redirect));
+      } else if (loggedInUser.userType === 'Admin') {
         navigate('/admin');
       } else {
         navigate('/');
@@ -110,7 +115,10 @@ export const LoginPage = () => {
 
         <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
           Don't have an account?{' '}
-          <Link to="/signup" style={{ color: '#818cf8', textDecoration: 'none', fontWeight: 600 }}>
+          <Link
+            to={redirect ? `/signup?redirect=${encodeURIComponent(redirect)}` : '/signup'}
+            style={{ color: '#818cf8', textDecoration: 'none', fontWeight: 600 }}
+          >
             Sign Up
           </Link>
         </p>

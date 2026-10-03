@@ -323,7 +323,7 @@ const runTests = async () => {
   console.log(`  ✓ Post moderated and deleted by Admin`);
 
   // Test 15: Notification System (Follow, Like, Comment, Message, Read, Read-All, Delete)
-  console.log('[15/15] Testing Notifications Lifecycle (Likes, Messages, Follows, Comments)...');
+  console.log('[15/20] Testing Notifications Lifecycle (Likes, Messages, Follows, Comments)...');
   const resNotifs = await fetch(`${BASE_URL}/notifications?page=1&limit=20`, {
     headers: { Authorization: `Bearer ${u2Token}` },
   });
@@ -429,8 +429,322 @@ const runTests = async () => {
   }
   console.log(`  ✓ Notification directly links to post ID: ${postIdFromNotif} (Likes: ${dataPostDetail.post.likesCount})`);
 
+  // Test 16: Threaded Comments & Replies
+  console.log('[16/20] Testing Threaded Comments, Replies & Cascade Deletion...');
+  // User 1 creates parent comment on linkedPostId
+  const resParentComment = await fetch(`${BASE_URL}/comments/${linkedPostId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${u1Token}` },
+    body: JSON.stringify({ text: 'Main discussion parent comment' }),
+  });
+  const dataParentComment = await resParentComment.json();
+  if (!resParentComment.ok) throw new Error(`Create parent comment failed: ${JSON.stringify(dataParentComment)}`);
+  const parentCommentId = dataParentComment.comment._id;
+  console.log(`  ✓ Parent comment created: ${parentCommentId}`);
+
+  // User 2 replies to parent comment
+  const resChildReply = await fetch(`${BASE_URL}/comments/${linkedPostId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${u2Token}` },
+    body: JSON.stringify({ text: 'Child reply from User 2', parentId: parentCommentId }),
+  });
+  const dataChildReply = await resChildReply.json();
+  if (!resChildReply.ok || dataChildReply.comment.parentId.toString() !== parentCommentId.toString()) {
+    throw new Error(`Create threaded reply failed: ${JSON.stringify(dataChildReply)}`);
+  }
+  const childReplyId = dataChildReply.comment._id;
+  console.log(`  ✓ Threaded reply created (Parent: ${dataChildReply.comment.parentId}, Reply ID: ${childReplyId})`);
+
+  // Verify reply notification was received by User 1
+  const resU1ReplyNotifs = await fetch(`${BASE_URL}/notifications?limit=5`, {
+    headers: { Authorization: `Bearer ${u1Token}` },
+  });
+  const dataU1ReplyNotifs = await resU1ReplyNotifs.json();
+  const replyNotif = dataU1ReplyNotifs.notifications.find((n) => n.type === 'reply');
+  if (!replyNotif) throw new Error('Reply notification not found for parent comment author');
+  console.log(`  ✓ Reply notification verified for comment author`);
+
+  // Verify cascade deletion: deleting parent comment removes both parent and child
+  const resDeleteParent = await fetch(`${BASE_URL}/comments/${parentCommentId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${u1Token}` },
+  });
+  const dataDeleteParent = await resDeleteParent.json();
+  if (!resDeleteParent.ok) throw new Error(`Delete parent comment failed: ${JSON.stringify(dataDeleteParent)}`);
+
+  const resRemainingComments = await fetch(`${BASE_URL}/comments/${linkedPostId}`, {
+    headers: { Authorization: `Bearer ${u1Token}` },
+  });
+  const dataRemainingComments = await resRemainingComments.json();
+  const stillHasParentOrChild = dataRemainingComments.comments.some(
+    (c) => c._id.toString() === parentCommentId.toString() || c._id.toString() === childReplyId.toString()
+  );
+  if (stillHasParentOrChild) {
+    throw new Error('Cascade deletion failed: parent or reply comment still found');
+  }
+  console.log(`  ✓ Cascade deletion verified: parent and reply both removed`);
+
+  // Test 17: Post Reposting & Unified Feed
+  console.log('[17/20] Testing Post Reposting, Unified Feed & Count Decrement...');
+  // User 2 reposts User 1's post
+  const resRepost = await fetch(`${BASE_URL}/posts/${linkedPostId}/repost`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${u2Token}` },
+  });
+  const dataRepost = await resRepost.json();
+  if (!resRepost.ok || !dataRepost.reposted || dataRepost.repostsCount !== 1) {
+    throw new Error(`Repost post failed: ${JSON.stringify(dataRepost)}`);
+  }
+  console.log(`  ✓ Post reposted (reposted: ${dataRepost.reposted}, repostsCount: ${dataRepost.repostsCount})`);
+
+  // Verify repost notification for User 1
+  const resU1RepostNotifs = await fetch(`${BASE_URL}/notifications?limit=5`, {
+    headers: { Authorization: `Bearer ${u1Token}` },
+  });
+  const dataU1RepostNotifs = await resU1RepostNotifs.json();
+  const repostNotif = dataU1RepostNotifs.notifications.find((n) => n.type === 'repost');
+  if (!repostNotif) throw new Error('Repost notification not found for post author');
+  console.log(`  ✓ Repost notification verified for post author`);
+
+  // Verify User 2's profile posts include the reposted item with repostedBy
+  const resU2Posts = await fetch(`${BASE_URL}/posts/user/${u2Id}`, {
+    headers: { Authorization: `Bearer ${u2Token}` },
+  });
+  const dataU2Posts = await resU2Posts.json();
+  const foundRepost = dataU2Posts.posts.find(
+    (p) => p._id.toString() === linkedPostId.toString() && p.repostedBy && (p.repostedBy._id?.toString() === u2Id.toString() || p.repostedBy.toString() === u2Id.toString())
+  );
+  if (!foundRepost) throw new Error('Reposted post not found in user posts feed with repostedBy');
+  console.log(`  ✓ Reposted post appeared in user profile feed with repostedBy tag`);
+
+  // Toggle repost again to undo
+  const resUnrepost = await fetch(`${BASE_URL}/posts/${linkedPostId}/repost`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${u2Token}` },
+  });
+  const dataUnrepost = await resUnrepost.json();
+  if (!resUnrepost.ok || dataUnrepost.reposted || dataUnrepost.repostsCount !== 0) {
+    throw new Error(`Undo repost failed: ${JSON.stringify(dataUnrepost)}`);
+  }
+  console.log(`  ✓ Repost toggle undo verified (reposted: ${dataUnrepost.reposted}, repostsCount: ${dataUnrepost.repostsCount})`);
+
+  // Test 18: Instagram-Style Standard Group Chat
+  console.log('[18/20] Testing Instagram-Style Standard Group Chat & Member Permissions...');
+  // User 1 creates standard group with User 2
+  const resCreateStdGroup = await fetch(`${BASE_URL}/groups`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${u1Token}` },
+    body: JSON.stringify({
+      name: 'Alpha & Beta Dev Chat',
+      groupType: 'standard',
+      participants: [u2Id],
+    }),
+  });
+  const dataCreateStdGroup = await resCreateStdGroup.json();
+  if (!resCreateStdGroup.ok) throw new Error(`Create standard group failed: ${JSON.stringify(dataCreateStdGroup)}`);
+  const stdGroupId = dataCreateStdGroup.group._id;
+  console.log(`  ✓ Standard group created: "${dataCreateStdGroup.group.name}" (ID: ${stdGroupId})`);
+
+  // User 2 (non-admin member) updates group name
+  const resUpdateStdGroup = await fetch(`${BASE_URL}/groups/${stdGroupId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${u2Token}` },
+    body: JSON.stringify({ name: 'Alpha & Beta Dev Chat [Renamed by Beta]' }),
+  });
+  const dataUpdateStdGroup = await resUpdateStdGroup.json();
+  if (!resUpdateStdGroup.ok || dataUpdateStdGroup.group.name !== 'Alpha & Beta Dev Chat [Renamed by Beta]') {
+    throw new Error(`Standard group update by non-admin failed: ${JSON.stringify(dataUpdateStdGroup)}`);
+  }
+  console.log(`  ✓ Standard group name updated by non-admin member successfully`);
+
+  // Establish socket connections for User 1 and User 2
+  const socket1 = io(SOCKET_URL, { auth: { token: u1Token }, transports: ['websocket'] });
+  const socket2 = io(SOCKET_URL, { auth: { token: u2Token }, transports: ['websocket'] });
+
+  await new Promise((resolve) => {
+    let connected = 0;
+    const check = () => {
+      connected++;
+      if (connected === 2) resolve();
+    };
+    socket1.on('connect', check);
+    socket2.on('connect', check);
+  });
+  console.log(`  ✓ Both sockets connected for real-time tests`);
+
+  // Send group message from User 1 to standard group, verify User 2 receives it
+  const receiveStdMsgPromise = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Timeout waiting for standard group message')), 5000);
+    socket2.on('receiveGroupMessage', (data) => {
+      if (data.groupId?.toString() === stdGroupId.toString() && data.message.text === 'Hello team!') {
+        clearTimeout(timer);
+        resolve(data);
+      }
+    });
+  });
+
+  socket1.emit('sendGroupMessage', {
+    groupId: stdGroupId,
+    text: 'Hello team!',
+  });
+
+  const receivedStdMsg = await receiveStdMsgPromise;
+  console.log(`  ✓ Standard group message received in real-time by User 2: "${receivedStdMsg.message.text}"`);
+
+  // Test 19: WhatsApp-Style Confidential Broadcast Channel
+  console.log('[19/20] Testing WhatsApp-Style Broadcast Channel & Privacy Permissions...');
+  // User 1 creates broadcast channel with User 2
+  const resCreateBcast = await fetch(`${BASE_URL}/groups`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${u1Token}` },
+    body: JSON.stringify({
+      name: 'Alpha Announcements Channel',
+      groupType: 'broadcast',
+      participants: [u2Id],
+    }),
+  });
+  const dataCreateBcast = await resCreateBcast.json();
+  if (!resCreateBcast.ok) throw new Error(`Create broadcast channel failed: ${JSON.stringify(dataCreateBcast)}`);
+  const bcastGroupId = dataCreateBcast.group._id;
+  console.log(`  ✓ Broadcast channel created: "${dataCreateBcast.group.name}" (ID: ${bcastGroupId})`);
+
+  // User 2 fetches channel details: member list should be masked (only admin visible)
+  const resBcastDetailsU2 = await fetch(`${BASE_URL}/groups/${bcastGroupId}`, {
+    headers: { Authorization: `Bearer ${u2Token}` },
+  });
+  const dataBcastDetailsU2 = await resBcastDetailsU2.json();
+  if (!resBcastDetailsU2.ok || dataBcastDetailsU2.group.participants.length !== 1) {
+    throw new Error(`Broadcast channel member privacy failed: ${JSON.stringify(dataBcastDetailsU2)}`);
+  }
+  console.log(`  ✓ Broadcast channel privacy verified: non-admin only sees admin (${dataBcastDetailsU2.group.participants[0].username})`);
+
+  // User 2 (non-admin member) attempts to update broadcast channel: must return 403 Forbidden
+  const resBcastUnauthorizedUpdate = await fetch(`${BASE_URL}/groups/${bcastGroupId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${u2Token}` },
+    body: JSON.stringify({ name: 'Unauthorized Renamed Channel' }),
+  });
+  if (resBcastUnauthorizedUpdate.status !== 403) {
+    throw new Error(`Expected status 403 for non-admin update on broadcast channel, got ${resBcastUnauthorizedUpdate.status}`);
+  }
+  console.log(`  ✓ 403 Forbidden correctly enforced when non-admin attempts to update broadcast channel`);
+
+  // User 1 (Admin) updates broadcast channel name
+  const resBcastAdminUpdate = await fetch(`${BASE_URL}/groups/${bcastGroupId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${u1Token}` },
+    body: JSON.stringify({ name: 'Alpha Official Announcements' }),
+  });
+  const dataBcastAdminUpdate = await resBcastAdminUpdate.json();
+  if (!resBcastAdminUpdate.ok || dataBcastAdminUpdate.group.name !== 'Alpha Official Announcements') {
+    throw new Error(`Admin update of broadcast channel failed: ${JSON.stringify(dataBcastAdminUpdate)}`);
+  }
+  console.log(`  ✓ Admin successfully updated broadcast channel name`);
+
+  // User 1 (Admin) sends announcement broadcast to all members
+  const receiveBcastMsgPromise = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Timeout waiting for broadcast message')), 5000);
+    socket2.on('receiveGroupMessage', (data) => {
+      if (data.groupId?.toString() === bcastGroupId.toString() && data.message.isBroadcast) {
+        clearTimeout(timer);
+        resolve(data);
+      }
+    });
+  });
+
+  socket1.emit('sendGroupMessage', {
+    groupId: bcastGroupId,
+    text: 'Important announcement for all subscribers!',
+    isBroadcast: true,
+  });
+
+  const receivedBcastMsg = await receiveBcastMsgPromise;
+  console.log(`  ✓ Broadcast announcement received by member: "${receivedBcastMsg.message.text}" (isBroadcast: true)`);
+
+  // Test 20: WebRTC Call Signaling (Audio & Video)
+  console.log('[20/20] Testing WebRTC Call Signaling (Offer, Answer, ICE Candidate, End Call)...');
+  // User 1 calls User 2
+  const incomingCallPromise = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Timeout waiting for incomingCall')), 5000);
+    socket2.once('incomingCall', (data) => {
+      clearTimeout(timer);
+      resolve(data);
+    });
+  });
+
+  socket1.emit('callUser', {
+    userToCall: u2Id,
+    signalData: { type: 'offer', sdp: 'v=0..mock-offer-sdp' },
+    from: u1Id,
+    callerName: u1Name,
+    callType: 'video',
+  });
+
+  const incomingCallData = await incomingCallPromise;
+  if (!incomingCallData || incomingCallData.from.toString() !== u1Id.toString() || incomingCallData.callType !== 'video') {
+    throw new Error(`Invalid incomingCall payload: ${JSON.stringify(incomingCallData)}`);
+  }
+  console.log(`  ✓ Incoming call signal received by User 2 (Type: ${incomingCallData.callType}, From: ${incomingCallData.callerName})`);
+
+  // User 2 answers call
+  const callAcceptedPromise = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Timeout waiting for callAccepted')), 5000);
+    socket1.once('callAccepted', (data) => {
+      clearTimeout(timer);
+      resolve(data);
+    });
+  });
+
+  socket2.emit('answerCall', {
+    to: u1Id,
+    signal: { type: 'answer', sdp: 'v=0..mock-answer-sdp' },
+  });
+
+  const callAcceptedData = await callAcceptedPromise;
+  if (!callAcceptedData || !callAcceptedData.signal) {
+    throw new Error(`Invalid callAccepted payload: ${JSON.stringify(callAcceptedData)}`);
+  }
+  console.log(`  ✓ Call answered and accepted signal received by caller`);
+
+  // User 1 sends ICE candidate
+  const iceCandidatePromise = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Timeout waiting for iceCandidate')), 5000);
+    socket2.once('iceCandidate', (data) => {
+      clearTimeout(timer);
+      resolve(data);
+    });
+  });
+
+  socket1.emit('iceCandidate', {
+    to: u2Id,
+    candidate: { candidate: 'candidate:1 1 UDP 2130706431 192.168.1.1 50000 typ host' },
+  });
+
+  const iceData = await iceCandidatePromise;
+  if (!iceData || !iceData.candidate) {
+    throw new Error('ICE candidate exchange failed');
+  }
+  console.log(`  ✓ ICE candidate successfully relayed`);
+
+  // User 1 ends call
+  const callEndedPromise = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Timeout waiting for callEnded')), 5000);
+    socket2.once('callEnded', () => {
+      clearTimeout(timer);
+      resolve(true);
+    });
+  });
+
+  socket1.emit('endCall', { to: u2Id });
+  await callEndedPromise;
+  console.log(`  ✓ Call ended signal successfully exchanged`);
+
+  // Cleanup sockets
+  socket1.disconnect();
+  socket2.disconnect();
+
   console.log('\n====================================');
-  console.log('  ALL 15 E2E TESTS PASSED SUCCESSFULLY!');
+  console.log('  ALL 20 E2E TESTS PASSED SUCCESSFULLY!');
   console.log('====================================\n');
 };
 

@@ -714,3 +714,43 @@ body {
   width: 100%;
 }
 
+/* Threaded Replies & Reposts */
+.comment-reply-thread {
+  margin-left: 2.2rem;
+  border-left: 2px solid var(--border-color);
+  padding-left: 0.8rem;
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.repost-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #34d399;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px dashed rgba(52, 211, 153, 0.2);
+}
+
+.group-type-tag {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.group-type-tag.standard {
+  background-color: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+}
+
+.group-type-tag.broadcast {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
