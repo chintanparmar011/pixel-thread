@@ -42,6 +42,7 @@ export const authAPI = {
 
 export const postAPI = {
   getFeed: (page = 1, limit = 20) => api.get(`/posts/feed?page=${page}&limit=${limit}`),
+  getExplorePosts: (params = {}) => api.get('/posts/explore', { params }),
   getPostById: (postId) => api.get(`/posts/${postId}`),
   getUserPosts: (userId) => api.get(`/posts/user/${userId}`),
   createPost: (formData) => api.post('/posts', formData, {
@@ -73,6 +74,19 @@ export const userAPI = {
 export const messageAPI = {
   getConversations: () => api.get('/messages/conversations'),
   getChatHistory: (userId, page = 1) => api.get(`/messages/${userId}?page=${page}`),
+  uploadMedia: (formData) => api.post('/messages/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  reactMessage: (messageId, emoji) => api.post(`/messages/${messageId}/react`, { emoji }),
+};
+
+export const storyAPI = {
+  getFeed: () => api.get('/stories/feed'),
+  createStory: (formData) => api.post('/stories', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  viewStory: (storyId) => api.post(`/stories/${storyId}/view`),
+  deleteStory: (storyId) => api.delete(`/stories/${storyId}`),
 };
 
 export const adminAPI = {
