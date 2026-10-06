@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import { useSocket } from './SocketContext';
 import { useNavigate } from 'react-router-dom';
 import { Avatar } from '../components/Avatar';
+import { AlertCircle, CheckCircle2, Sparkles, X } from 'lucide-react';
 
 const NotificationContext = createContext(null);
 
@@ -16,6 +17,12 @@ export const NotificationProvider = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [toastNotification, setToastNotification] = useState(null);
+  const [appToast, setAppToast] = useState(null);
+
+  const showToast = useCallback((text, type = 'info') => {
+    if (!text) return;
+    setAppToast({ text, type, id: Date.now() });
+  }, []);
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
@@ -38,6 +45,7 @@ export const NotificationProvider = ({ children }) => {
       setNotifications([]);
       setUnreadCount(0);
       setToastNotification(null);
+      setAppToast(null);
     }
   }, [user, fetchNotifications]);
 
@@ -53,14 +61,20 @@ export const NotificationProvider = ({ children }) => {
       setToastNotification(notif);
     };
 
+    const handleAccountSuspended = (data) => {
+      showToast(data?.message || 'Your account has been suspended by an administrator.', 'error');
+    };
+
     socket.on('newNotification', handleNewNotification);
+    socket.on('accountSuspended', handleAccountSuspended);
 
     return () => {
       socket.off('newNotification', handleNewNotification);
+      socket.off('accountSuspended', handleAccountSuspended);
     };
-  }, [socket]);
+  }, [socket, showToast]);
 
-  // Auto-dismiss toast alert after 5 seconds
+  // Auto-dismiss socket notification toast after 5s
   useEffect(() => {
     if (!toastNotification) return;
     const timer = setTimeout(() => {
@@ -68,6 +82,15 @@ export const NotificationProvider = ({ children }) => {
     }, 5000);
     return () => clearTimeout(timer);
   }, [toastNotification]);
+
+  // Auto-dismiss general app toast after 4s
+  useEffect(() => {
+    if (!appToast) return;
+    const timer = setTimeout(() => {
+      setAppToast(null);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [appToast]);
 
   const markAsRead = async (id) => {
     try {
@@ -113,7 +136,7 @@ export const NotificationProvider = ({ children }) => {
     } else if (notif.type === 'follow') {
       const username = notif.sender?.username;
       if (username) navigate(`/profile/${username}`);
-    } else if (notif.type === 'like' || notif.type === 'comment') {
+    } else if (notif.type === 'like' || notif.type === 'comment' || notif.type === 'reply' || notif.type === 'repost') {
       const targetPostId = notif.post?._id || notif.post;
       if (targetPostId) {
         navigate(`/post/${targetPostId}`);
@@ -134,11 +157,12 @@ export const NotificationProvider = ({ children }) => {
         markAllAsRead,
         deleteNotification,
         handleNotificationClick,
+        showToast,
       }}
     >
       {children}
 
-      {/* Floating In-App Toast Alert Popup */}
+      {/* Floating In-App Socket Notification Banner */}
       {toastNotification && (
         <div
           onClick={() => handleNotificationClick(toastNotification)}
@@ -149,7 +173,7 @@ export const NotificationProvider = ({ children }) => {
             zIndex: 9999,
             backgroundColor: 'var(--bg-secondary)',
             border: '1px solid var(--accent-color)',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.55)',
             borderRadius: '12px',
             padding: '0.8rem 1rem',
             display: 'flex',
@@ -163,15 +187,17 @@ export const NotificationProvider = ({ children }) => {
           <Avatar src={toastNotification.sender?.profilePicture} size={36} />
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: '0.82rem', color: '#818cf8', marginBottom: '0.15rem' }}>
-              New Notification
+            <div style={{ fontWeight: 600, fontSize: '0.82rem', color: '#d2a8ff', marginBottom: '0.15rem' }}>
+              Notification
             </div>
             <div style={{ fontSize: '0.83rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {toastNotification.type === 'like' && `@${toastNotification.sender?.username || 'Someone'} liked your post`}
               {toastNotification.type === 'message' && `@${toastNotification.sender?.username || 'Someone'} sent you a message`}
               {toastNotification.type === 'follow' && `@${toastNotification.sender?.username || 'Someone'} started following you`}
               {toastNotification.type === 'comment' && `@${toastNotification.sender?.username || 'Someone'} commented on your post`}
-              {!['like', 'message', 'follow', 'comment'].includes(toastNotification.type) && (toastNotification.message || 'New activity')}
+              {toastNotification.type === 'reply' && `@${toastNotification.sender?.username || 'Someone'} replied to your comment`}
+              {toastNotification.type === 'repost' && `@${toastNotification.sender?.username || 'Someone'} reposted your post`}
+              {!['like', 'message', 'follow', 'comment', 'reply', 'repost'].includes(toastNotification.type) && (toastNotification.message || 'New activity')}
             </div>
           </div>
 
@@ -199,6 +225,58 @@ export const NotificationProvider = ({ children }) => {
             }}
           >
             ×
+          </button>
+        </div>
+      )}
+
+      {/* General Themed In-App Toast (Replaces Browser alert) */}
+      {appToast && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            zIndex: 10000,
+            backgroundColor: 'var(--bg-secondary)',
+            border: `1px solid ${
+              appToast.type === 'error'
+                ? 'var(--danger)'
+                : appToast.type === 'success'
+                ? 'var(--success)'
+                : 'var(--accent-color)'
+            }`,
+            boxShadow: '0 8px 28px rgba(0, 0, 0, 0.6)',
+            borderRadius: '10px',
+            padding: '0.75rem 1.1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            maxWidth: '380px',
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+        >
+          {appToast.type === 'error' && <AlertCircle size={20} color="var(--danger)" style={{ flexShrink: 0 }} />}
+          {appToast.type === 'success' && <CheckCircle2 size={20} color="var(--success)" style={{ flexShrink: 0 }} />}
+          {appToast.type !== 'error' && appToast.type !== 'success' && <Sparkles size={20} color="#d2a8ff" style={{ flexShrink: 0 }} />}
+
+          <span style={{ fontSize: '0.88rem', color: 'var(--text-primary)', flex: 1, wordBreak: 'break-word' }}>
+            {appToast.text}
+          </span>
+
+          <button
+            onClick={() => setAppToast(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '0.2rem',
+            }}
+            title="Dismiss"
+          >
+            <X size={16} />
           </button>
         </div>
       )}

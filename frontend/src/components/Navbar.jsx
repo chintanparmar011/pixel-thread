@@ -9,11 +9,14 @@ import {
   User as UserIcon, 
   ShieldAlert, 
   LogOut,
-  Bell
+  Bell,
+  Sparkles,
+  PlusSquare
 } from 'lucide-react';
 
 import { Avatar } from './Avatar';
 import { NotificationDropdown } from './NotificationDropdown';
+import { CreatePostModal } from './CreatePostModal';
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
@@ -21,6 +24,7 @@ export const Navbar = () => {
   const navigate = useNavigate();
 
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const dropdownRef = useRef(null);
 
   // Close notification dropdown when clicking outside
@@ -47,88 +51,152 @@ export const Navbar = () => {
   if (!user) return null;
 
   return (
-    <header className="app-header">
-      <div className="brand-section">
-        <Link to="/" style={{ textDecoration: 'none' }}>
-          <h1 className="brand-title">PixelThread</h1>
-        </Link>
-        <span className="badge badge-info">{user.userType}</span>
-      </div>
+    <>
+      {/* Top Header */}
+      <header className="app-header">
+        <div className="brand-section">
+          <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ 
+              width: '28px', 
+              height: '28px', 
+              borderRadius: '8px', 
+              background: 'linear-gradient(135deg, #a371f7, #8957e5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff'
+            }}>
+              <Sparkles size={16} />
+            </span>
+            <span className="brand-title">PixelThread</span>
+          </Link>
+        </div>
 
-      <nav style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+        {/* User & Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {/* Direct Messages Icon Button */}
+          <NavLink 
+            to="/messages" 
+            className={({ isActive }) => `notification-bell-btn ${isActive ? 'active' : ''}`}
+            title="Messages"
+            aria-label="Messages"
+          >
+            <MessageSquare size={19} />
+          </NavLink>
+
+          {/* Notification Bell Dropdown */}
+          <div ref={dropdownRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowDropdown((prev) => !prev)}
+              className={`notification-bell-btn ${showDropdown ? 'active' : ''}`}
+              title="Notifications"
+              aria-label="Notifications"
+            >
+              <Bell size={19} />
+              {unreadCount > 0 && (
+                <span className="notification-badge">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {showDropdown && (
+              <NotificationDropdown onClose={() => setShowDropdown(false)} />
+            )}
+          </div>
+
+          {/* Profile Quick Link */}
+          <Link 
+            to={`/profile/${user.username}`} 
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'inherit' }}
+          >
+            <Avatar src={user.profilePicture} size={32} />
+            <span style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+              @{user.username}
+            </span>
+          </Link>
+
+          {/* Logout */}
+          <button onClick={handleLogout} className="btn btn-secondary btn-sm" title="Sign Out">
+            <LogOut size={15} />
+          </button>
+        </div>
+      </header>
+
+      {/* Universal Bottom Navigation Dock (Icons Only, for all screen sizes) */}
+      <nav className="bottom-nav-dock" aria-label="Main Navigation">
         <NavLink 
           to="/" 
-          className={({ isActive }) => `tab-btn ${isActive ? 'active' : ''}`}
+          className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
+          title="Feed"
+          aria-label="Feed"
         >
-          <Home size={18} /> Feed
+          <Home size={22} />
         </NavLink>
 
         <NavLink 
           to="/search" 
-          className={({ isActive }) => `tab-btn ${isActive ? 'active' : ''}`}
+          className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
+          title="Explore"
+          aria-label="Explore"
         >
-          <Search size={18} /> Discover
+          <Search size={22} />
         </NavLink>
 
-        <NavLink 
-          to="/messages" 
-          className={({ isActive }) => `tab-btn ${isActive ? 'active' : ''}`}
+        {/* Center Create Post Button */}
+        <button 
+          type="button"
+          onClick={() => setShowCreateModal(true)} 
+          className="bottom-nav-item"
+          title="Create Post"
+          aria-label="Create Post"
+          style={{ background: 'none', border: 'none', cursor: 'pointer' }}
         >
-          <MessageSquare size={18} /> Messages
+          <PlusSquare size={22} />
+        </button>
+
+        <NavLink 
+          to="/notifications" 
+          className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
+          title="Notifications"
+          aria-label="Notifications"
+        >
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Bell size={22} />
+            {unreadCount > 0 && (
+              <span className="notification-badge" style={{ top: '-4px', right: '-8px' }}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </div>
         </NavLink>
 
         <NavLink 
           to={`/profile/${user.username}`} 
-          className={({ isActive }) => `tab-btn ${isActive ? 'active' : ''}`}
+          className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
+          title="Profile"
+          aria-label="Profile"
         >
-          <UserIcon size={18} /> Profile
+          <Avatar src={user.profilePicture} size={24} />
         </NavLink>
 
         {user.userType === 'Admin' && (
           <NavLink 
             to="/admin" 
-            className={({ isActive }) => `tab-btn ${isActive ? 'active' : ''}`}
-            style={{ color: '#fbbf24' }}
+            className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
+            title="Admin Panel"
+            aria-label="Admin Panel"
           >
-            <ShieldAlert size={18} /> Admin
+            <ShieldAlert size={22} />
           </NavLink>
         )}
       </nav>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
-        {/* Notification Bell with Dropdown */}
-        <div ref={dropdownRef} style={{ position: 'relative' }}>
-          <button
-            onClick={() => setShowDropdown((prev) => !prev)}
-            className={`notification-bell-btn ${showDropdown ? 'active' : ''}`}
-            title="Notifications"
-            aria-label="Notifications"
-          >
-            <Bell size={20} />
-            {unreadCount > 0 && (
-              <span className="notification-badge">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </button>
-
-          {showDropdown && (
-            <NotificationDropdown onClose={() => setShowDropdown(false)} />
-          )}
-        </div>
-
-        <Link 
-          to={`/profile/${user.username}`} 
-          style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none', color: 'inherit' }}
-        >
-          <Avatar src={user.profilePicture} size={36} />
-          <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>@{user.username}</span>
-        </Link>
-
-        <button onClick={handleLogout} className="btn btn-secondary btn-sm" title="Sign Out">
-          <LogOut size={16} /> Logout
-        </button>
-      </div>
-    </header>
+      {/* Global Create Post Modal */}
+      <CreatePostModal 
+        isOpen={showCreateModal} 
+        onClose={() => setShowCreateModal(false)} 
+      />
+    </>
   );
 };

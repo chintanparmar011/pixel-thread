@@ -20,14 +20,24 @@ import {
 } from 'lucide-react';
 import { Avatar } from '../components/Avatar';
 import { FollowListModal } from '../components/FollowListModal';
+import { ConfirmModal } from '../components/ConfirmModal';
+import { useNotifications } from '../context/NotificationContext';
 
 export const ProfilePage = () => {
   const { username } = useParams();
   const { user: currentUser, updateUser } = useAuth();
+  const { showToast } = useNotifications();
   const [profileData, setProfileData] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    loading: false,
+    onConfirm: null,
+  });
 
   // Followers / Following Modal
   const [followModalOpen, setFollowModalOpen] = useState(false);
@@ -85,7 +95,7 @@ export const ProfilePage = () => {
         }));
       }
     } catch (err) {
-      alert(err.message || 'Follow action failed');
+      showToast(err.message || 'Follow action failed', 'error');
     }
   };
 
@@ -125,25 +135,36 @@ export const ProfilePage = () => {
         profilePicture: response.user.profilePicture,
       }));
       setIsEditing(false);
+      showToast('Profile updated successfully!', 'success');
     } catch (err) {
-      alert(err.message || 'Failed to update profile');
+      showToast(err.message || 'Failed to update profile', 'error');
     } finally {
       setEditSubmitting(false);
     }
   };
 
-  const handleDeletePost = async (postId) => {
-    if (!window.confirm('Delete this post?')) return;
-    try {
-      await postAPI.deletePost(postId);
-      setPosts((prev) => prev.filter((p) => p._id !== postId));
-      setProfileData((prev) => ({
-        ...prev,
-        postsCount: Math.max(0, prev.postsCount - 1),
-      }));
-    } catch (err) {
-      alert(err.message || 'Failed to delete post');
-    }
+  const handleDeletePost = (postId) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Post',
+      message: 'Are you sure you want to permanently delete this post?',
+      onConfirm: async () => {
+        try {
+          setConfirmConfig((prev) => ({ ...prev, loading: true }));
+          await postAPI.deletePost(postId);
+          setPosts((prev) => prev.filter((p) => p._id !== postId));
+          setProfileData((prev) => ({
+            ...prev,
+            postsCount: Math.max(0, prev.postsCount - 1),
+          }));
+          showToast('Post deleted', 'info');
+        } catch (err) {
+          showToast(err.message || 'Failed to delete post', 'error');
+        } finally {
+          setConfirmConfig({ isOpen: false, title: '', message: '', loading: false, onConfirm: null });
+        }
+      },
+    });
   };
 
   const handleToggleLike = async (postId) => {
@@ -196,7 +217,7 @@ export const ProfilePage = () => {
         )
       );
     } catch (err) {
-      alert(err.message || 'Failed to add comment');
+      showToast(err.message || 'Failed to add comment', 'error');
     }
   };
 
@@ -208,12 +229,22 @@ export const ProfilePage = () => {
 
   const handleShareProfile = async () => {
     const url = `${window.location.origin}/profile/${profileData?.username}`;
-    if (navigator.clipboard) {
-      await navigator.clipboard.writeText(url);
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
       setProfileCopied(true);
       setTimeout(() => setProfileCopied(false), 2500);
-    } else {
-      prompt('Copy profile link:', url);
+      showToast('Profile link copied to clipboard!', 'success');
+    } catch {
+      showToast('Failed to copy profile link', 'error');
     }
   };
 
@@ -228,18 +259,28 @@ export const ProfilePage = () => {
         )
       );
     } catch (err) {
-      alert(err.message || 'Failed to update repost');
+      showToast(err.message || 'Failed to update repost', 'error');
     }
   };
 
   const handleSharePost = async (postId) => {
     const url = `${window.location.origin}/post/${postId}`;
-    if (navigator.clipboard) {
-      await navigator.clipboard.writeText(url);
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
       setCopiedPostId(postId);
       setTimeout(() => setCopiedPostId(null), 2500);
-    } else {
-      prompt('Copy post link:', url);
+      showToast('Post link copied to clipboard!', 'success');
+    } catch {
+      showToast('Failed to copy post link', 'error');
     }
   };
 
@@ -261,28 +302,38 @@ export const ProfilePage = () => {
         )
       );
     } catch (err) {
-      alert(err.message || 'Failed to add reply');
+      showToast(err.message || 'Failed to add reply', 'error');
     } finally {
       setSubmittingReply(false);
     }
   };
 
-  const handleDeleteComment = async (postId, commentId) => {
-    if (!window.confirm('Delete this comment?')) return;
-    try {
-      await socialAPI.deleteComment(commentId);
-      setCommentsMap((prev) => ({
-        ...prev,
-        [postId]: (prev[postId] || []).filter((c) => c._id !== commentId && (c.parentId?._id || c.parentId) !== commentId),
-      }));
-      setPosts((prev) =>
-        prev.map((p) =>
-          p._id === postId ? { ...p, commentsCount: Math.max(0, (p.commentsCount || 0) - 1) } : p
-        )
-      );
-    } catch (err) {
-      alert(err.message || 'Failed to delete comment');
-    }
+  const handleDeleteComment = (postId, commentId) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Comment',
+      message: 'Are you sure you want to delete this comment?',
+      onConfirm: async () => {
+        try {
+          setConfirmConfig((prev) => ({ ...prev, loading: true }));
+          await socialAPI.deleteComment(commentId);
+          setCommentsMap((prev) => ({
+            ...prev,
+            [postId]: (prev[postId] || []).filter((c) => c._id !== commentId && (c.parentId?._id || c.parentId) !== commentId),
+          }));
+          setPosts((prev) =>
+            prev.map((p) =>
+              p._id === postId ? { ...p, commentsCount: Math.max(0, (p.commentsCount || 0) - 1) } : p
+            )
+          );
+          showToast('Comment deleted', 'info');
+        } catch (err) {
+          showToast(err.message || 'Failed to delete comment', 'error');
+        } finally {
+          setConfirmConfig({ isOpen: false, title: '', message: '', loading: false, onConfirm: null });
+        }
+      },
+    });
   };
 
   if (loading) {
@@ -317,8 +368,8 @@ export const ProfilePage = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <h2>{profileData.name}</h2>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                  @{profileData.username} • <span className="badge badge-info">{profileData.userType}</span>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.2rem' }}>
+                  <span>@{profileData.username}</span>
                 </div>
               </div>
 
@@ -468,46 +519,46 @@ export const ProfilePage = () => {
               {post.text && <p className="post-content">{post.text}</p>}
               {post.image && <img src={post.image} alt="" className="post-media" />}
 
-              {/* Engagement Bar */}
-              <div className="post-footer" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              {/* Engagement Bar (Twitter/Instagram icon style) */}
+              <div className="post-footer">
                 <button
-                  className={`engagement-btn ${post.isLiked ? 'liked' : ''}`}
+                  className={`engagement-btn like-btn ${post.isLiked ? 'liked' : ''}`}
                   onClick={() => handleToggleLike(post._id)}
+                  title={post.isLiked ? 'Unlike' : 'Like'}
                 >
                   <Heart
                     size={18}
-                    fill={post.isLiked ? '#f43f5e' : 'none'}
-                    color={post.isLiked ? '#f43f5e' : 'currentColor'}
+                    fill={post.isLiked ? 'var(--like-color)' : 'none'}
+                    color={post.isLiked ? 'var(--like-color)' : 'currentColor'}
                   />
-                  <span>{post.likesCount || 0} Likes</span>
+                  {post.likesCount > 0 && <span className="engagement-count">{post.likesCount}</span>}
                 </button>
 
                 <button
-                  className={`engagement-btn ${post.isReposted ? 'liked' : ''}`}
-                  onClick={() => handleToggleRepost(post._id)}
-                  style={{ color: post.isReposted ? '#34d399' : 'inherit' }}
-                  title={post.isReposted ? 'Undo Repost' : 'Repost'}
-                >
-                  <Repeat size={18} color={post.isReposted ? '#34d399' : 'currentColor'} />
-                  <span>{post.repostsCount || 0} Reposts</span>
-                </button>
-
-                <button
-                  className="engagement-btn"
+                  className="engagement-btn comment-btn"
                   onClick={() => handleToggleComments(post._id)}
+                  title="Reply"
                 >
                   <MessageSquare size={18} />
-                  <span>{post.commentsCount || 0} Comments</span>
+                  {post.commentsCount > 0 && <span className="engagement-count">{post.commentsCount}</span>}
                 </button>
 
                 <button
-                  className="engagement-btn"
+                  className={`engagement-btn repost-btn ${post.isReposted ? 'reposted' : ''}`}
+                  onClick={() => handleToggleRepost(post._id)}
+                  title={post.isReposted ? 'Undo Repost' : 'Repost'}
+                >
+                  <Repeat size={18} color={post.isReposted ? 'var(--repost-color)' : 'currentColor'} />
+                  {post.repostsCount > 0 && <span className="engagement-count">{post.repostsCount}</span>}
+                </button>
+
+                <button
+                  className="engagement-btn share-btn"
                   onClick={() => handleSharePost(post._id)}
                   title="Share post link"
                   style={{ marginLeft: 'auto' }}
                 >
                   <Share2 size={17} />
-                  <span>Share</span>
                 </button>
               </div>
 
@@ -764,7 +815,7 @@ export const ProfilePage = () => {
                     className="btn btn-secondary btn-sm"
                     onClick={() => avatarInputRef.current?.click()}
                   >
-                    <Camera size={14} /> Upload from Device
+                    <Camera size={14} /> Upload photo
                   </button>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
                     JPG, PNG, or WEBP up to 5MB
@@ -819,6 +870,16 @@ export const ProfilePage = () => {
         initialTab={followModalTab}
         currentUserId={currentUser?.id}
         onFollowChange={fetchProfile}
+      />
+
+      {/* Themed Confirm Dialog */}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        loading={confirmConfig.loading}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmConfig({ isOpen: false, title: '', message: '', loading: false, onConfirm: null })}
       />
     </div>
   );

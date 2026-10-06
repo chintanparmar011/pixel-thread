@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { CallProvider } from './context/CallContext';
 import { Navbar } from './components/Navbar';
 import { FeedPage } from './pages/FeedPage';
 import { SearchPage } from './pages/SearchPage';
@@ -12,6 +13,7 @@ import { PostDetailPage } from './pages/PostDetailPage';
 import { AdminPage } from './pages/AdminPage';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
+import { InstallPwaBanner } from './components/InstallPwaBanner';
 import { Loader2 } from 'lucide-react';
 import './App.css';
 
@@ -66,7 +68,8 @@ function App() {
       <AuthProvider>
         <SocketProvider>
           <NotificationProvider>
-            <div className="app-container">
+            <CallProvider>
+              <div className="app-container">
               <Routes>
                 {/* Public Routes */}
                 <Route
@@ -155,7 +158,9 @@ function App() {
                 {/* Fallback */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
+              <InstallPwaBanner />
             </div>
+            </CallProvider>
           </NotificationProvider>
         </SocketProvider>
       </AuthProvider>

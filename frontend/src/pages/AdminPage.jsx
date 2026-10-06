@@ -13,9 +13,12 @@ import {
   CheckCircle,
   AlertTriangle
 } from 'lucide-react';
+import { useNotifications } from '../context/NotificationContext';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 export const AdminPage = () => {
   const { user } = useAuth();
+  const { showToast } = useNotifications();
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [posts, setPosts] = useState([]);
@@ -24,6 +27,15 @@ export const AdminPage = () => {
   const [userSearch, setUserSearch] = useState('');
   const [userStatusFilter, setUserStatusFilter] = useState('all');
   const [activeAdminTab, setActiveAdminTab] = useState('users'); // 'users' | 'posts' | 'logs'
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    confirmVariant: 'danger',
+    onConfirm: null,
+    loading: false,
+  });
 
   // Restrict access to Admin role
   if (user?.userType !== 'Admin') {
@@ -61,41 +73,63 @@ export const AdminPage = () => {
       const data = await adminAPI.getUsers({ search: userSearch, status: userStatusFilter });
       setUsers(data.users || []);
     } catch (err) {
-      alert(err.message || 'User search failed');
+      showToast(err.message || 'User search failed', 'error');
     }
   };
 
-  const handleUpdateStatus = async (userId, currentStatus) => {
+  const handleUpdateStatus = (userId, currentStatus) => {
     const nextAction = currentStatus === 'active' ? 'suspend' : 'reactivate';
-    if (!window.confirm(`Are you sure you want to ${nextAction} this account?`)) return;
-
-    try {
-      await adminAPI.updateUserStatus(userId, nextAction);
-      setUsers((prev) =>
-        prev.map((u) =>
-          u._id === userId ? { ...u, status: nextAction === 'suspend' ? 'suspended' : 'active' } : u
-        )
-      );
-      // Reload stats & logs
-      const [newStats, newLogs] = await Promise.all([adminAPI.getStats(), adminAPI.getLogs({ limit: 10 })]);
-      setStats(newStats.stats);
-      setLogs(newLogs.logs);
-    } catch (err) {
-      alert(err.message || 'Action failed');
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: `${nextAction === 'suspend' ? 'Suspend' : 'Reactivate'} Account`,
+      message: `Are you sure you want to ${nextAction} this account?`,
+      confirmText: nextAction === 'suspend' ? 'Suspend' : 'Reactivate',
+      confirmVariant: nextAction === 'suspend' ? 'danger' : 'primary',
+      onConfirm: async () => {
+        try {
+          setConfirmConfig((prev) => ({ ...prev, loading: true }));
+          await adminAPI.updateUserStatus(userId, nextAction);
+          setUsers((prev) =>
+            prev.map((u) =>
+              u._id === userId ? { ...u, status: nextAction === 'suspend' ? 'suspended' : 'active' } : u
+            )
+          );
+          const [newStats, newLogs] = await Promise.all([adminAPI.getStats(), adminAPI.getLogs({ limit: 10 })]);
+          setStats(newStats.stats);
+          setLogs(newLogs.logs);
+          showToast(`User account ${nextAction === 'suspend' ? 'suspended' : 'reactivated'} successfully`, 'success');
+        } catch (err) {
+          showToast(err.message || 'Action failed', 'error');
+        } finally {
+          setConfirmConfig({ isOpen: false, title: '', message: '', confirmText: 'Confirm', confirmVariant: 'danger', onConfirm: null, loading: false });
+        }
+      },
+    });
   };
 
-  const handleDeletePost = async (postId) => {
-    if (!window.confirm('Delete this post as Administrator?')) return;
-    try {
-      await adminAPI.deletePost(postId);
-      setPosts((prev) => prev.filter((p) => p._id !== postId));
-      const [newStats, newLogs] = await Promise.all([adminAPI.getStats(), adminAPI.getLogs({ limit: 10 })]);
-      setStats(newStats.stats);
-      setLogs(newLogs.logs);
-    } catch (err) {
-      alert(err.message || 'Failed to delete post');
-    }
+  const handleDeletePost = (postId) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Post',
+      message: 'Delete this post as Administrator?',
+      confirmText: 'Delete',
+      confirmVariant: 'danger',
+      onConfirm: async () => {
+        try {
+          setConfirmConfig((prev) => ({ ...prev, loading: true }));
+          await adminAPI.deletePost(postId);
+          setPosts((prev) => prev.filter((p) => p._id !== postId));
+          const [newStats, newLogs] = await Promise.all([adminAPI.getStats(), adminAPI.getLogs({ limit: 10 })]);
+          setStats(newStats.stats);
+          setLogs(newLogs.logs);
+          showToast('Post deleted by administrator', 'info');
+        } catch (err) {
+          showToast(err.message || 'Failed to delete post', 'error');
+        } finally {
+          setConfirmConfig({ isOpen: false, title: '', message: '', confirmText: 'Confirm', confirmVariant: 'danger', onConfirm: null, loading: false });
+        }
+      },
+    });
   };
 
   return (
@@ -103,7 +137,7 @@ export const AdminPage = () => {
       {/* Header */}
       <div className="card">
         <h2 className="card-title">
-          <ShieldAlert size={24} color="#f59e0b" /> Administrator Control Center (SRS Sec 2.2)
+          <ShieldAlert size={24} color="#f59e0b" /> Administrator Control Center
         </h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
           Manage user accounts, monitor posts, verify system health, and inspect audit trails.
@@ -146,19 +180,19 @@ export const AdminPage = () => {
           onClick={() => setActiveAdminTab('users')}
           className={`btn ${activeAdminTab === 'users' ? '' : 'btn-secondary'} btn-sm`}
         >
-          <Users size={16} /> User Accounts (R.1.5)
+          <Users size={16} /> Users
         </button>
         <button
           onClick={() => setActiveAdminTab('posts')}
           className={`btn ${activeAdminTab === 'posts' ? '' : 'btn-secondary'} btn-sm`}
         >
-          <FileText size={16} /> Content Moderation
+          <FileText size={16} /> Posts
         </button>
         <button
           onClick={() => setActiveAdminTab('logs')}
           className={`btn ${activeAdminTab === 'logs' ? '' : 'btn-secondary'} btn-sm`}
         >
-          <AlertTriangle size={16} /> Audit Logs
+          <AlertTriangle size={16} /> Logs
         </button>
       </div>
 
@@ -326,6 +360,18 @@ export const AdminPage = () => {
           </div>
         </div>
       )}
+
+      {/* Themed Confirm Dialog */}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        confirmVariant={confirmConfig.confirmVariant}
+        loading={confirmConfig.loading}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmConfig({ isOpen: false, title: '', message: '', confirmText: 'Confirm', confirmVariant: 'danger', onConfirm: null, loading: false })}
+      />
     </div>
   );
 };

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useNotifications } from '../context/NotificationContext';
 import { Avatar } from './Avatar';
 import { timeAgo } from '../utils/timeAgo';
-import { Heart, MessageSquare, UserPlus, MessageCircle, CheckCheck, BellOff } from 'lucide-react';
+import { Heart, MessageSquare, UserPlus, MessageCircle, CheckCheck, BellOff, Repeat, CornerDownRight } from 'lucide-react';
 
 export const NotificationDropdown = ({ onClose }) => {
   const { notifications, unreadCount, markAllAsRead, handleNotificationClick } = useNotifications();
@@ -36,6 +36,18 @@ export const NotificationDropdown = ({ onClose }) => {
             <MessageCircle size={10} fill="currentColor" />
           </div>
         );
+      case 'reply':
+        return (
+          <div className="notification-type-badge comment">
+            <CornerDownRight size={10} />
+          </div>
+        );
+      case 'repost':
+        return (
+          <div className="notification-type-badge follow" style={{ backgroundColor: 'var(--repost-color)' }}>
+            <Repeat size={10} />
+          </div>
+        );
       default:
         return null;
     }
@@ -66,6 +78,18 @@ export const NotificationDropdown = ({ onClose }) => {
         return (
           <>
             <strong>@{username}</strong> commented on your post
+          </>
+        );
+      case 'reply':
+        return (
+          <>
+            <strong>@{username}</strong> replied to your comment
+          </>
+        );
+      case 'repost':
+        return (
+          <>
+            <strong>@{username}</strong> reposted your post
           </>
         );
       default:

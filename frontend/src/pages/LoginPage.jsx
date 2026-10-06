@@ -39,11 +39,6 @@ export const LoginPage = () => {
     }
   };
 
-  const handleQuickAdmin = () => {
-    setIdentifier('ogadmin');
-    setPassword('12345678');
-  };
-
   return (
     <div style={{ maxWidth: '400px', margin: '4rem auto', width: '100%', padding: '0 1rem' }}>
       <div className="card" style={{ padding: '2rem' }}>
@@ -102,18 +97,7 @@ export const LoginPage = () => {
           </button>
         </form>
 
-        <div style={{ borderTop: '1px solid var(--border-color)', margin: '1.5rem 0', paddingTop: '1rem', textAlign: 'center' }}>
-          <button
-            type="button"
-            onClick={handleQuickAdmin}
-            className="btn btn-secondary btn-sm"
-            style={{ fontSize: '0.8rem', width: '100%', justifyContent: 'center' }}
-          >
-            Fill Admin Credentials (ogadmin / 12345678)
-          </button>
-        </div>
-
-        <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+        <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '1.5rem' }}>
           Don't have an account?{' '}
           <Link
             to={redirect ? `/signup?redirect=${encodeURIComponent(redirect)}` : '/signup'}

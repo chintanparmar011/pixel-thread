@@ -45,7 +45,7 @@ export const SocketProvider = ({ children }) => {
     });
 
     newSocket.on('accountSuspended', (data) => {
-      alert(data.message || 'Your account has been suspended by an administrator.');
+      console.warn('Account suspended by admin:', data?.message);
       logout();
     });
 

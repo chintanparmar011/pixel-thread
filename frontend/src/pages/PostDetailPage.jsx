@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { postAPI, socialAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { Avatar } from '../components/Avatar';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { 
   Heart, 
   MessageSquare, 
@@ -11,7 +13,7 @@ import {
   Trash2, 
   Loader2, 
   Send, 
-  ArrowLeft,
+  ArrowLeft, 
   AlertCircle,
   CornerDownRight,
   Check
@@ -20,6 +22,7 @@ import {
 export const PostDetailPage = () => {
   const { postId } = useParams();
   const { user } = useAuth();
+  const { showToast } = useNotifications();
   const navigate = useNavigate();
 
   const [post, setPost] = useState(null);
@@ -28,6 +31,13 @@ export const PostDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    loading: false,
+    onConfirm: null,
+  });
 
   // Repost & Share State
   const [copiedToast, setCopiedToast] = useState(false);
@@ -66,7 +76,7 @@ export const PostDetailPage = () => {
         likesCount: data.likeCount,
       }));
     } catch (err) {
-      alert(err.message || 'Failed to update like');
+      showToast(err.message || 'Failed to update like', 'error');
     }
   };
 
@@ -80,19 +90,29 @@ export const PostDetailPage = () => {
         repostsCount: data.repostsCount,
       }));
     } catch (err) {
-      alert(err.message || 'Failed to update repost');
+      showToast(err.message || 'Failed to update repost', 'error');
     }
   };
 
   const handleSharePost = async () => {
     if (!post) return;
     const url = `${window.location.origin}/post/${post._id}`;
-    if (navigator.clipboard) {
-      await navigator.clipboard.writeText(url);
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
       setCopiedToast(true);
       setTimeout(() => setCopiedToast(false), 2500);
-    } else {
-      prompt('Copy post link:', url);
+      showToast('Post link copied to clipboard!', 'success');
+    } catch {
+      showToast('Failed to copy link', 'error');
     }
   };
 
@@ -110,7 +130,7 @@ export const PostDetailPage = () => {
       }));
       setCommentText('');
     } catch (err) {
-      alert(err.message || 'Failed to add comment');
+      showToast(err.message || 'Failed to add comment', 'error');
     } finally {
       setSubmittingComment(false);
     }
@@ -130,37 +150,56 @@ export const PostDetailPage = () => {
       setReplyText('');
       setActiveReplyId(null);
     } catch (err) {
-      alert(err.message || 'Failed to submit reply');
+      showToast(err.message || 'Failed to submit reply', 'error');
     } finally {
       setSubmittingReply(false);
     }
   };
 
-  const handleDeleteComment = async (commentId) => {
-    if (!window.confirm('Are you sure you want to delete this comment?')) return;
-    try {
-      await socialAPI.deleteComment(commentId);
-      // Remove comment and any children
-      setComments((prev) =>
-        prev.filter((c) => c._id !== commentId && (c.parentId?._id || c.parentId) !== commentId)
-      );
-      setPost((prev) => ({
-        ...prev,
-        commentsCount: Math.max(0, (prev.commentsCount || 0) - 1),
-      }));
-    } catch (err) {
-      alert(err.message || 'Failed to delete comment');
-    }
+  const handleDeleteComment = (commentId) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Comment',
+      message: 'Are you sure you want to delete this comment?',
+      onConfirm: async () => {
+        try {
+          setConfirmConfig((prev) => ({ ...prev, loading: true }));
+          await socialAPI.deleteComment(commentId);
+          setComments((prev) =>
+            prev.filter((c) => c._id !== commentId && (c.parentId?._id || c.parentId) !== commentId)
+          );
+          setPost((prev) => ({
+            ...prev,
+            commentsCount: Math.max(0, (prev.commentsCount || 0) - 1),
+          }));
+          showToast('Comment deleted', 'info');
+        } catch (err) {
+          showToast(err.message || 'Failed to delete comment', 'error');
+        } finally {
+          setConfirmConfig({ isOpen: false, title: '', message: '', loading: false, onConfirm: null });
+        }
+      },
+    });
   };
 
-  const handleDeletePost = async () => {
-    if (!window.confirm('Are you sure you want to delete this post?')) return;
-    try {
-      await postAPI.deletePost(post._id);
-      navigate('/');
-    } catch (err) {
-      alert(err.message || 'Failed to delete post');
-    }
+  const handleDeletePost = () => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Post',
+      message: 'Are you sure you want to permanently delete this post?',
+      onConfirm: async () => {
+        try {
+          setConfirmConfig((prev) => ({ ...prev, loading: true }));
+          await postAPI.deletePost(post._id);
+          showToast('Post deleted', 'info');
+          navigate('/');
+        } catch (err) {
+          showToast(err.message || 'Failed to delete post', 'error');
+        } finally {
+          setConfirmConfig({ isOpen: false, title: '', message: '', loading: false, onConfirm: null });
+        }
+      },
+    });
   };
 
   if (loading) {
@@ -262,42 +301,41 @@ export const PostDetailPage = () => {
         )}
 
         {/* Engagement Action Bar */}
-        <div className="post-footer" style={{ marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.8rem', display: 'flex', gap: '1rem' }}>
+        <div className="post-footer">
           {/* Like */}
           <button
-            className={`engagement-btn ${post.isLiked ? 'liked' : ''}`}
+            className={`engagement-btn like-btn ${post.isLiked ? 'liked' : ''}`}
             onClick={handleToggleLike}
+            title={post.isLiked ? 'Unlike' : 'Like'}
           >
-            <Heart size={19} fill={post.isLiked ? '#f43f5e' : 'none'} color={post.isLiked ? '#f43f5e' : 'currentColor'} />
-            <span style={{ fontWeight: 600 }}>{post.likesCount || 0} Likes</span>
+            <Heart size={19} fill={post.isLiked ? 'var(--like-color)' : 'none'} color={post.isLiked ? 'var(--like-color)' : 'currentColor'} />
+            {post.likesCount > 0 && <span className="engagement-count">{post.likesCount}</span>}
           </button>
 
           {/* Repost */}
           <button
-            className={`engagement-btn ${post.isReposted ? 'liked' : ''}`}
+            className={`engagement-btn repost-btn ${post.isReposted ? 'reposted' : ''}`}
             onClick={handleToggleRepost}
-            style={{ color: post.isReposted ? '#34d399' : 'inherit' }}
             title={post.isReposted ? 'Undo Repost' : 'Repost to your profile'}
           >
-            <Repeat size={19} color={post.isReposted ? '#34d399' : 'currentColor'} />
-            <span style={{ fontWeight: 600 }}>{post.repostsCount || 0} Reposts</span>
+            <Repeat size={19} color={post.isReposted ? 'var(--repost-color)' : 'currentColor'} />
+            {post.repostsCount > 0 && <span className="engagement-count">{post.repostsCount}</span>}
           </button>
 
           {/* Comments count */}
-          <div className="engagement-btn" style={{ cursor: 'default' }}>
+          <div className="engagement-btn comment-btn" style={{ cursor: 'default' }}>
             <MessageSquare size={19} />
-            <span style={{ fontWeight: 600 }}>{comments.length} Comments</span>
+            {comments.length > 0 && <span className="engagement-count">{comments.length}</span>}
           </div>
 
           {/* Share Link */}
           <button
-            className="engagement-btn"
+            className="engagement-btn share-btn"
             onClick={handleSharePost}
             title="Copy shareable link"
             style={{ marginLeft: 'auto' }}
           >
             <Share2 size={18} />
-            <span>Share</span>
           </button>
         </div>
 
@@ -481,6 +519,16 @@ export const PostDetailPage = () => {
           </form>
         </div>
       </div>
+
+      {/* Themed Confirm Dialog */}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        loading={confirmConfig.loading}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmConfig({ isOpen: false, title: '', message: '', loading: false, onConfirm: null })}
+      />
     </div>
   );
 };

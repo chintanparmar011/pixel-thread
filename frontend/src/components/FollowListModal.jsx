@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { X, Search, Loader2, UserCheck, UserPlus } from 'lucide-react';
 import { socialAPI } from '../services/api';
 import { Avatar } from './Avatar';
+import { useNotifications } from '../context/NotificationContext';
 
 export const FollowListModal = ({
   isOpen,
@@ -12,6 +13,7 @@ export const FollowListModal = ({
   currentUserId,
   onFollowChange,
 }) => {
+  const { showToast } = useNotifications();
   const [activeTab, setActiveTab] = useState(initialTab); // 'followers' | 'following'
   const [followers, setFollowers] = useState([]);
   const [following, setFollowing] = useState([]);
@@ -66,7 +68,7 @@ export const FollowListModal = ({
         onFollowChange();
       }
     } catch (err) {
-      alert(err.message || 'Action failed');
+      showToast(err.message || 'Action failed', 'error');
     } finally {
       setActionLoading((prev) => ({ ...prev, [targetId]: false }));
     }

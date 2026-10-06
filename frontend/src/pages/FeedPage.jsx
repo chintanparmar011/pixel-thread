@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { postAPI, socialAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { CreatePost } from '../components/CreatePost';
 import { Link } from 'react-router-dom';
 import { 
   Heart, 
@@ -15,12 +14,34 @@ import {
   Check 
 } from 'lucide-react';
 import { Avatar } from '../components/Avatar';
+import { useNotifications } from '../context/NotificationContext';
+import { StoryTray } from '../components/StoryTray';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 export const FeedPage = () => {
   const { user } = useAuth();
+  const { showToast } = useNotifications();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+    loading: false,
+  });
+
+  // Listen for posts published via bottom dock create post modal
+  useEffect(() => {
+    const handleGlobalPostCreated = (e) => {
+      if (e.detail) {
+        setPosts((prev) => [e.detail, ...prev]);
+      }
+    };
+    window.addEventListener('postCreated', handleGlobalPostCreated);
+    return () => window.removeEventListener('postCreated', handleGlobalPostCreated);
+  }, []);
   const [activeCommentPostId, setActiveCommentPostId] = useState(null);
   const [commentsMap, setCommentsMap] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
@@ -66,7 +87,7 @@ export const FeedPage = () => {
         )
       );
     } catch (err) {
-      alert(err.message || 'Failed to update like');
+      showToast(err.message || 'Failed to update like', 'error');
     }
   };
 
@@ -81,18 +102,28 @@ export const FeedPage = () => {
         )
       );
     } catch (err) {
-      alert(err.message || 'Failed to update repost');
+      showToast(err.message || 'Failed to update repost', 'error');
     }
   };
 
   const handleSharePost = async (postId) => {
     const url = `${window.location.origin}/post/${postId}`;
-    if (navigator.clipboard) {
-      await navigator.clipboard.writeText(url);
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
       setShareToastId(postId);
       setTimeout(() => setShareToastId(null), 2500);
-    } else {
-      prompt('Copy post link:', url);
+      showToast('Post link copied to clipboard!', 'success');
+    } catch {
+      showToast('Failed to copy link', 'error');
     }
   };
 
@@ -133,7 +164,7 @@ export const FeedPage = () => {
       );
       setCommentInputs((prev) => ({ ...prev, [postId]: '' }));
     } catch (err) {
-      alert(err.message || 'Failed to add comment');
+      showToast(err.message || 'Failed to add comment', 'error');
     }
   };
 
@@ -156,46 +187,66 @@ export const FeedPage = () => {
       setReplyInputs((prev) => ({ ...prev, [parentId]: '' }));
       setActiveReplyId(null);
     } catch (err) {
-      alert(err.message || 'Failed to add reply');
+      showToast(err.message || 'Failed to add reply', 'error');
     } finally {
       setSubmittingReply(false);
     }
   };
 
-  const handleDeleteComment = async (postId, commentId) => {
-    if (!window.confirm('Delete this comment?')) return;
-    try {
-      await socialAPI.deleteComment(commentId);
-      setCommentsMap((prev) => ({
-        ...prev,
-        [postId]: (prev[postId] || []).filter(
-          (c) => c._id !== commentId && (c.parentId?._id || c.parentId) !== commentId
-        ),
-      }));
-      setPosts((prev) =>
-        prev.map((p) =>
-          p._id === postId ? { ...p, commentsCount: Math.max(0, (p.commentsCount || 0) - 1) } : p
-        )
-      );
-    } catch (err) {
-      alert(err.message || 'Failed to delete comment');
-    }
+  const handleDeleteComment = (postId, commentId) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Comment',
+      message: 'Are you sure you want to delete this comment?',
+      onConfirm: async () => {
+        try {
+          setConfirmConfig((prev) => ({ ...prev, loading: true }));
+          await socialAPI.deleteComment(commentId);
+          setCommentsMap((prev) => ({
+            ...prev,
+            [postId]: (prev[postId] || []).filter(
+              (c) => c._id !== commentId && (c.parentId?._id || c.parentId) !== commentId
+            ),
+          }));
+          setPosts((prev) =>
+            prev.map((p) =>
+              p._id === postId ? { ...p, commentsCount: Math.max(0, (p.commentsCount || 0) - 1) } : p
+            )
+          );
+          showToast('Comment deleted', 'info');
+        } catch (err) {
+          showToast(err.message || 'Failed to delete comment', 'error');
+        } finally {
+          setConfirmConfig({ isOpen: false, title: '', message: '', onConfirm: null, loading: false });
+        }
+      },
+    });
   };
 
-  const handleDeletePost = async (postId) => {
-    if (!window.confirm('Are you sure you want to delete this post?')) return;
-    try {
-      await postAPI.deletePost(postId);
-      setPosts((prev) => prev.filter((p) => p._id !== postId));
-    } catch (err) {
-      alert(err.message || 'Failed to delete post');
-    }
+  const handleDeletePost = (postId) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Post',
+      message: 'Are you sure you want to permanently delete this post?',
+      onConfirm: async () => {
+        try {
+          setConfirmConfig((prev) => ({ ...prev, loading: true }));
+          await postAPI.deletePost(postId);
+          setPosts((prev) => prev.filter((p) => p._id !== postId));
+          showToast('Post deleted', 'info');
+        } catch (err) {
+          showToast(err.message || 'Failed to delete post', 'error');
+        } finally {
+          setConfirmConfig({ isOpen: false, title: '', message: '', onConfirm: null, loading: false });
+        }
+      },
+    });
   };
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', width: '100%' }}>
-      {/* Create Post Component with Device Image Upload */}
-      <CreatePost onPostCreated={handlePostCreated} />
+      {/* 24-Hour Stories Tray */}
+      <StoryTray />
 
       {error && (
         <div className="card" style={{ color: '#f87171', borderColor: '#ef4444' }}>
@@ -206,16 +257,16 @@ export const FeedPage = () => {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
           <Loader2 size={32} className="spin" style={{ margin: '0 auto 1rem' }} />
-          <p>Loading your feed from database...</p>
+          <p>Loading your feed...</p>
         </div>
       ) : posts.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
           <h3>No posts in your feed yet!</h3>
           <p style={{ color: 'var(--text-secondary)', margin: '0.8rem 0 1.2rem' }}>
-            Follow other users on the Discover page or create your first post above.
+            Follow creators on Explore to see their latest updates here.
           </p>
           <Link to="/search" className="btn btn-sm">
-            Discover Users
+            Explore Creators
           </Link>
         </div>
       ) : (
@@ -287,47 +338,47 @@ export const FeedPage = () => {
               {post.image && (
                 <img
                   src={post.image}
-                  alt="Post media from device"
+                  alt="Post"
                   className="post-media"
                 />
               )}
 
-              {/* Engagement Bar */}
-              <div className="post-footer" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              {/* Engagement Bar (Twitter/Instagram icon style) */}
+              <div className="post-footer">
                 <button
-                  className={`engagement-btn ${post.isLiked ? 'liked' : ''}`}
+                  className={`engagement-btn like-btn ${post.isLiked ? 'liked' : ''}`}
                   onClick={() => handleToggleLike(post._id)}
+                  title={post.isLiked ? 'Unlike' : 'Like'}
                 >
-                  <Heart size={18} fill={post.isLiked ? '#f43f5e' : 'none'} color={post.isLiked ? '#f43f5e' : 'currentColor'} />
-                  <span>{post.likesCount || 0} Likes</span>
+                  <Heart size={18} fill={post.isLiked ? 'var(--like-color)' : 'none'} color={post.isLiked ? 'var(--like-color)' : 'currentColor'} />
+                  {post.likesCount > 0 && <span className="engagement-count">{post.likesCount}</span>}
                 </button>
 
                 <button
-                  className={`engagement-btn ${post.isReposted ? 'liked' : ''}`}
-                  onClick={() => handleToggleRepost(post._id)}
-                  style={{ color: post.isReposted ? '#34d399' : 'inherit' }}
-                  title={post.isReposted ? 'Undo Repost' : 'Repost to your profile'}
-                >
-                  <Repeat size={18} color={post.isReposted ? '#34d399' : 'currentColor'} />
-                  <span>{post.repostsCount || 0} Reposts</span>
-                </button>
-
-                <button
-                  className="engagement-btn"
+                  className="engagement-btn comment-btn"
                   onClick={() => handleToggleComments(post._id)}
+                  title="Reply"
                 >
                   <MessageSquare size={18} />
-                  <span>{post.commentsCount || 0} Comments</span>
+                  {post.commentsCount > 0 && <span className="engagement-count">{post.commentsCount}</span>}
                 </button>
 
                 <button
-                  className="engagement-btn"
+                  className={`engagement-btn repost-btn ${post.isReposted ? 'reposted' : ''}`}
+                  onClick={() => handleToggleRepost(post._id)}
+                  title={post.isReposted ? 'Undo Repost' : 'Repost'}
+                >
+                  <Repeat size={18} color={post.isReposted ? 'var(--repost-color)' : 'currentColor'} />
+                  {post.repostsCount > 0 && <span className="engagement-count">{post.repostsCount}</span>}
+                </button>
+
+                <button
+                  className="engagement-btn share-btn"
                   onClick={() => handleSharePost(post._id)}
                   title="Share post link"
                   style={{ marginLeft: 'auto' }}
                 >
                   <Share2 size={17} />
-                  <span>Share</span>
                 </button>
               </div>
 
@@ -500,6 +551,16 @@ export const FeedPage = () => {
           );
         })
       )}
+
+      {/* Themed Confirm Dialog */}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        loading={confirmConfig.loading}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmConfig({ isOpen: false, title: '', message: '', onConfirm: null, loading: false })}
+      />
     </div>
   );
 };
