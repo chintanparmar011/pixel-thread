@@ -260,6 +260,37 @@ const getUserPosts = asyncHandler(async (req, res) => {
   res.json({ posts: result });
 });
 
+const getExplorePosts = asyncHandler(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 30;
+  const search = req.query.search ? req.query.search.trim() : "";
+
+  let query = {};
+  if (search) {
+    query = { text: { $regex: search, $options: "i" } };
+  }
+
+  const posts = await Post.find(query)
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .populate("authorId", "name username profilePicture");
+
+  const formatted = await formatPostsWithEngagement(posts, req.user._id);
+
+  // Sort by high audience engagement (likes + comments + reposts)
+  formatted.sort((a, b) => {
+    const scoreA = (a.likesCount || 0) * 3 + (a.commentsCount || 0) * 4 + (a.repostsCount || 0) * 2;
+    const scoreB = (b.likesCount || 0) * 3 + (b.commentsCount || 0) * 4 + (b.repostsCount || 0) * 2;
+    if (scoreB !== scoreA) {
+      return scoreB - scoreA;
+    }
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+
+  const paginated = formatted.slice((page - 1) * limit, page * limit);
+  res.json({ posts: paginated, total: formatted.length, page, limit });
+});
+
 module.exports = {
   createPost,
   getPostById,
@@ -267,4 +298,5 @@ module.exports = {
   deletePost,
   getFeed,
   getUserPosts,
+  getExplorePosts,
 };

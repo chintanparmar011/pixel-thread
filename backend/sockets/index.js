@@ -47,10 +47,10 @@ const initializeSocket = (httpServer) => {
     });
 
     // 1-on-1 Direct Messaging
-    socket.on("sendMessage", async ({ receiverId, text }, callback) => {
+    socket.on("sendMessage", async ({ receiverId, text, mediaUrl, mediaType, audioDuration }, callback) => {
       try {
-        if (!receiverId || !text || !text.trim()) {
-          if (callback) callback({ error: "receiverId and text are required" });
+        if (!receiverId || (!text?.trim() && !mediaUrl)) {
+          if (callback) callback({ error: "receiverId and message content or media are required" });
           return;
         }
 
@@ -63,12 +63,16 @@ const initializeSocket = (httpServer) => {
         const message = await Message.create({
           senderId: socket.userId,
           receiverId,
-          text: text.trim(),
+          text: text ? text.trim() : "",
+          mediaUrl: mediaUrl || null,
+          mediaType: mediaType || null,
+          audioDuration: audioDuration || 0,
         });
 
         const populated = await Message.findById(message._id)
           .populate("senderId", "name username profilePicture")
-          .populate("receiverId", "name username profilePicture");
+          .populate("receiverId", "name username profilePicture")
+          .populate("reactions.user", "name username profilePicture");
 
         io.to(receiverId).emit("receiveMessage", populated);
         io.to(socket.userId).emit("receiveMessage", populated);
@@ -76,11 +80,17 @@ const initializeSocket = (httpServer) => {
         // Persistent notification
         try {
           const Notification = require("../models/Notification");
+          const snippet = mediaType === "audio" 
+            ? "🎤 Sent you a voice note" 
+            : mediaType === "image" 
+            ? "📷 Sent you a photo" 
+            : `sent you a message: "${text.trim().substring(0, 50)}${text.trim().length > 50 ? "..." : ""}"`;
+
           const notif = await Notification.create({
             recipient: receiverId,
             sender: socket.userId,
             type: "message",
-            message: `@${socket.user?.username || "user"} sent you a message: "${text.trim().substring(0, 50)}${text.trim().length > 50 ? "..." : ""}"`,
+            message: `@${socket.user?.username || "user"} ${snippet}`,
           });
           const populatedNotif = await Notification.findById(notif._id).populate(
             "sender",
@@ -100,10 +110,10 @@ const initializeSocket = (httpServer) => {
     // Group Chat & Broadcast Channel Messaging
     socket.on(
       "sendGroupMessage",
-      async ({ groupId, text, isBroadcast, targetUserId }, callback) => {
+      async ({ groupId, text, mediaUrl, mediaType, audioDuration, isBroadcast, targetUserId }, callback) => {
         try {
-          if (!groupId || !text || !text.trim()) {
-            if (callback) callback({ error: "groupId and text are required" });
+          if (!groupId || (!text?.trim() && !mediaUrl)) {
+            if (callback) callback({ error: "groupId and message content or media are required" });
             return;
           }
 
@@ -126,13 +136,16 @@ const initializeSocket = (httpServer) => {
           const message = await Message.create({
             senderId: socket.userId,
             conversationId: group._id,
-            text: text.trim(),
+            text: text ? text.trim() : "",
+            mediaUrl: mediaUrl || null,
+            mediaType: mediaType || null,
+            audioDuration: audioDuration || 0,
             isBroadcast: isAdmin && !!isBroadcast,
             targetUserId: isAdmin && targetUserId ? targetUserId : null,
           });
 
           group.lastMessage = {
-            text: text.trim(),
+            text: text ? text.trim() : (mediaType === "audio" ? "🎤 Voice note" : "📷 Photo"),
             senderId: socket.userId,
             createdAt: new Date(),
           };
@@ -140,7 +153,8 @@ const initializeSocket = (httpServer) => {
 
           const populated = await Message.findById(message._id)
             .populate("senderId", "name username profilePicture")
-            .populate("targetUserId", "name username profilePicture");
+            .populate("targetUserId", "name username profilePicture")
+            .populate("reactions.user", "name username profilePicture");
 
           if (group.groupType === "standard") {
             // Instagram-style: all members receive the message
@@ -192,11 +206,74 @@ const initializeSocket = (httpServer) => {
       }
     );
 
+    // Real-time Message Reactions
+    socket.on("reactMessage", async ({ messageId, emoji }, callback) => {
+      try {
+        if (!messageId || !emoji) {
+          if (callback) callback({ error: "messageId and emoji are required" });
+          return;
+        }
+
+        const msg = await Message.findById(messageId);
+        if (!msg) {
+          if (callback) callback({ error: "Message not found" });
+          return;
+        }
+
+        const existingIndex = msg.reactions.findIndex(
+          (r) => r.user.toString() === socket.userId
+        );
+
+        if (existingIndex > -1) {
+          if (msg.reactions[existingIndex].emoji === emoji) {
+            // Toggle off
+            msg.reactions.splice(existingIndex, 1);
+          } else {
+            // Update emoji
+            msg.reactions[existingIndex].emoji = emoji;
+          }
+        } else {
+          msg.reactions.push({ user: socket.userId, emoji });
+        }
+
+        await msg.save();
+
+        const populated = await Message.findById(msg._id)
+          .populate("senderId", "name username profilePicture")
+          .populate("receiverId", "name username profilePicture")
+          .populate("reactions.user", "name username profilePicture");
+
+        const reactionPayload = {
+          messageId: msg._id,
+          reactions: populated.reactions,
+        };
+
+        if (msg.conversationId) {
+          const grp = await Conversation.findById(msg.conversationId);
+          if (grp && grp.participants) {
+            grp.participants.forEach((pId) => {
+              io.to(pId.toString()).emit("messageReactionUpdated", reactionPayload);
+            });
+          }
+        } else {
+          if (msg.receiverId) io.to(msg.receiverId.toString()).emit("messageReactionUpdated", reactionPayload);
+          if (msg.senderId) io.to(msg.senderId.toString()).emit("messageReactionUpdated", reactionPayload);
+        }
+
+        if (callback) callback({ success: true, reactions: populated.reactions });
+      } catch (err) {
+        if (callback) callback({ error: "Failed to update reaction" });
+      }
+    });
+
     // WebRTC Audio/Video Call Signaling
     socket.on("callUser", ({ userToCall, signalData, from, callerName, callerAvatar, callType }) => {
-      io.to(userToCall).emit("incomingCall", {
+      const targetRoom = (userToCall?._id || userToCall?.id || userToCall)?.toString();
+      if (!targetRoom) return;
+
+      io.to(targetRoom).emit("incomingCall", {
         signal: signalData,
-        from: from || socket.userId,
+        from: (from?._id || from?.id || from || socket.userId)?.toString(),
         callerName: callerName || socket.user?.name || "Caller",
         callerAvatar: callerAvatar || socket.user?.profilePicture || "",
         callType: callType || "video",
@@ -204,19 +281,31 @@ const initializeSocket = (httpServer) => {
     });
 
     socket.on("answerCall", ({ to, signal }) => {
-      io.to(to).emit("callAccepted", { signal });
+      const targetRoom = (to?._id || to?.id || to)?.toString();
+      if (targetRoom) {
+        io.to(targetRoom).emit("callAccepted", { signal });
+      }
     });
 
     socket.on("rejectCall", ({ to }) => {
-      io.to(to).emit("callRejected");
+      const targetRoom = (to?._id || to?.id || to)?.toString();
+      if (targetRoom) {
+        io.to(targetRoom).emit("callRejected");
+      }
     });
 
     socket.on("endCall", ({ to }) => {
-      io.to(to).emit("callEnded");
+      const targetRoom = (to?._id || to?.id || to)?.toString();
+      if (targetRoom) {
+        io.to(targetRoom).emit("callEnded");
+      }
     });
 
     socket.on("iceCandidate", ({ to, candidate }) => {
-      io.to(to).emit("iceCandidate", { candidate });
+      const targetRoom = (to?._id || to?.id || to)?.toString();
+      if (targetRoom) {
+        io.to(targetRoom).emit("iceCandidate", { candidate });
+      }
     });
 
     socket.on("typing", ({ receiverId }) => {

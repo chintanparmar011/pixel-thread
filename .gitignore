@@ -8,6 +8,14 @@ node_modules/
 */.env
 */.env.*
 *.env.local
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+credentials.json
+service-account*.json
 
 # Preserve example environment templates
 !.env.example
@@ -18,6 +26,15 @@ dist/
 */dist/
 build/
 */build/
+
+# Local uploads & temporary storage
+uploads/
+*/uploads/
+tmp/
+temp/
+*.sqlite
+*.sqlite3
+*.db
 
 # Logs & Debugging
 *.log

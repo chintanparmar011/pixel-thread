@@ -61,9 +61,10 @@ const getUserGroups = asyncHandler(async (req, res) => {
   // Privacy filter for broadcast channels
   const sanitized = groups.map((g) => {
     const gObj = g.toObject();
-    const isAdmin = gObj.admin._id.toString() === req.user._id.toString();
+    const adminId = gObj.admin?._id ? gObj.admin._id.toString() : (gObj.admin ? gObj.admin.toString() : null);
+    const isAdmin = adminId === req.user._id.toString();
     if (gObj.groupType === "broadcast" && !isAdmin) {
-      gObj.participants = [gObj.admin];
+      gObj.participants = gObj.admin ? [gObj.admin] : [];
     }
     return gObj;
   });
@@ -84,11 +85,12 @@ const getGroupDetails = asyncHandler(async (req, res) => {
   if (!isMember) throw new AppError("Not authorized to view this group", 403);
 
   const gObj = group.toObject();
-  const isAdmin = gObj.admin._id.toString() === req.user._id.toString();
+  const adminId = gObj.admin?._id ? gObj.admin._id.toString() : (gObj.admin ? gObj.admin.toString() : null);
+  const isAdmin = adminId === req.user._id.toString();
 
   // Hide members in broadcast channels from non-admins
   if (gObj.groupType === "broadcast" && !isAdmin) {
-    gObj.participants = [gObj.admin];
+    gObj.participants = gObj.admin ? [gObj.admin] : [];
   }
 
   res.json({ group: gObj });
@@ -103,7 +105,7 @@ const updateGroup = asyncHandler(async (req, res) => {
   );
   if (!isMember) throw new AppError("Not authorized to modify this group", 403);
 
-  const isAdmin = group.admin.toString() === req.user._id.toString();
+  const isAdmin = group.admin?.toString() === req.user._id.toString();
 
   // Permission check: WhatsApp broadcast can only be updated by admin
   // Instagram standard group can be updated by any member
@@ -148,7 +150,7 @@ const getGroupMessages = asyncHandler(async (req, res) => {
   );
   if (!isMember) throw new AppError("Not authorized to view messages", 403);
 
-  const isAdmin = group.admin.toString() === req.user._id.toString();
+  const isAdmin = group.admin?.toString() === req.user._id.toString();
 
   let query = { conversationId: group._id };
 

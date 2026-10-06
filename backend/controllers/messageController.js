@@ -11,7 +11,8 @@ const getConversations = asyncHandler(async (req, res) => {
   })
     .sort({ createdAt: -1 })
     .populate("senderId", "name username profilePicture status")
-    .populate("receiverId", "name username profilePicture status");
+    .populate("receiverId", "name username profilePicture status")
+    .populate("reactions.user", "name username profilePicture");
 
   const conversationMap = new Map();
 
@@ -34,8 +35,11 @@ const getConversations = asyncHandler(async (req, res) => {
         },
         lastMessage: {
           id: msg._id,
-          text: msg.text,
+          text: msg.text || (msg.mediaType === "audio" ? "🎤 Voice note" : msg.mediaType === "image" ? "📷 Photo" : ""),
           senderId: msg.senderId._id,
+          mediaUrl: msg.mediaUrl,
+          mediaType: msg.mediaType,
+          audioDuration: msg.audioDuration,
           createdAt: msg.createdAt,
         },
         unreadCount: 0,
@@ -70,7 +74,8 @@ const getChatHistory = asyncHandler(async (req, res) => {
     .skip((page - 1) * limit)
     .limit(limit)
     .populate("senderId", "name username profilePicture")
-    .populate("receiverId", "name username profilePicture");
+    .populate("receiverId", "name username profilePicture")
+    .populate("reactions.user", "name username profilePicture");
 
   await Message.updateMany(
     { senderId: userId, receiverId: req.user._id, isRead: false },
@@ -91,4 +96,59 @@ const getChatHistory = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { getConversations, getChatHistory };
+const uploadChatMedia = asyncHandler(async (req, res) => {
+  if (!req.file) throw new AppError("No file uploaded", 400);
+
+  const isAudio =
+    req.file.mimetype.startsWith("audio/") ||
+    (req.file.originalname && req.file.originalname.match(/\.(webm|mp3|wav|m4a|ogg)$/i));
+
+  res.json({
+    url: req.file.path,
+    mediaType: isAudio ? "audio" : "image",
+    mimetype: req.file.mimetype,
+    filename: req.file.originalname,
+  });
+});
+
+const reactToMessage = asyncHandler(async (req, res) => {
+  const { messageId } = req.params;
+  const { emoji } = req.body;
+  const userId = req.user._id;
+
+  if (!emoji) throw new AppError("Emoji is required", 400);
+
+  const message = await Message.findById(messageId);
+  if (!message) throw new AppError("Message not found", 404);
+
+  const existingIdx = message.reactions.findIndex(
+    (r) => r.user.toString() === userId.toString()
+  );
+
+  if (existingIdx > -1) {
+    if (message.reactions[existingIdx].emoji === emoji) {
+      // Toggle off
+      message.reactions.splice(existingIdx, 1);
+    } else {
+      // Update emoji
+      message.reactions[existingIdx].emoji = emoji;
+    }
+  } else {
+    message.reactions.push({ user: userId, emoji });
+  }
+
+  await message.save();
+  const populated = await Message.findById(message._id)
+    .populate("senderId", "name username profilePicture")
+    .populate("receiverId", "name username profilePicture")
+    .populate("reactions.user", "name username profilePicture");
+
+  res.json({ success: true, message: populated });
+});
+
+module.exports = {
+  getConversations,
+  getChatHistory,
+  uploadChatMedia,
+  reactToMessage,
+};

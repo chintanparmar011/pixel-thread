@@ -739,12 +739,116 @@ const runTests = async () => {
   await callEndedPromise;
   console.log(`  ✓ Call ended signal successfully exchanged`);
 
+  // Test 21: 24-Hour Story Creation
+  console.log('[21/26] Testing 24-Hour Story Creation (POST /api/stories)...');
+  const storyForm = new FormData();
+  storyForm.append('media', new Blob([dummyPng], { type: 'image/png' }), 'story.png');
+  storyForm.append('caption', 'My test 24h story!');
+  const resStory = await fetch(`${BASE_URL}/stories`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${u1Token}` },
+    body: storyForm,
+  });
+  const dataStory = await resStory.json();
+  if (!resStory.ok || !dataStory.story) throw new Error(`Story creation failed: ${JSON.stringify(dataStory)}`);
+  const createdStoryId = dataStory.story._id;
+  console.log(`  ✓ Story created: ${createdStoryId} with 24h expiration`);
+
+  // Test 22: Stories Status Tray Feed & View Tracking
+  console.log('[22/26] Testing Stories Tray Feed & View Tracking (GET /api/stories/feed)...');
+  const resStoryFeed = await fetch(`${BASE_URL}/stories/feed`, {
+    headers: { Authorization: `Bearer ${u2Token}` },
+  });
+  const dataStoryFeed = await resStoryFeed.json();
+  if (!resStoryFeed.ok || !Array.isArray(dataStoryFeed.tray)) throw new Error('Failed to get stories feed');
+  const user1Tray = dataStoryFeed.tray.find(t => t.user.id.toString() === u1Id.toString());
+  if (!user1Tray || user1Tray.stories.length === 0) throw new Error('User 1 stories not found in tray');
+  console.log(`  ✓ Stories feed retrieved, found ${dataStoryFeed.tray.length} users in status tray`);
+
+  // Record view on story by User 2
+  const resViewStory = await fetch(`${BASE_URL}/stories/${createdStoryId}/view`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${u2Token}` },
+  });
+  const dataViewStory = await resViewStory.json();
+  if (!resViewStory.ok || !dataViewStory.success) throw new Error('Failed to record story view');
+  console.log('  ✓ Story marked as viewed by User 2');
+
+  // Test 23: Chat Media Attachment Upload
+  console.log('[23/26] Testing Chat Media Attachment Upload (POST /api/messages/upload)...');
+  const mediaForm = new FormData();
+  mediaForm.append('file', new Blob([dummyPng], { type: 'image/png' }), 'attachment.png');
+  const resUpload = await fetch(`${BASE_URL}/messages/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${u1Token}` },
+    body: mediaForm,
+  });
+  const dataUpload = await resUpload.json();
+  if (!resUpload.ok || !dataUpload.url) throw new Error(`Chat media upload failed: ${JSON.stringify(dataUpload)}`);
+  console.log(`  ✓ Media uploaded to: ${dataUpload.url} (Type: ${dataUpload.mediaType})`);
+
+  // Test 24: Voice Note & Media Messaging via WebSockets
+  console.log('[24/26] Testing Voice Note & Image Direct Messaging via WebSockets...');
+  const voiceMsgPromise = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Timeout waiting for voice message')), 5000);
+    socket2.once('receiveMessage', (msg) => {
+      clearTimeout(timer);
+      resolve(msg);
+    });
+  });
+
+  socket1.emit('sendMessage', {
+    receiverId: u2Id,
+    text: '',
+    mediaUrl: dataUpload.url,
+    mediaType: 'audio',
+    audioDuration: 15,
+  });
+
+  const receivedVoiceMsg = await voiceMsgPromise;
+  if (!receivedVoiceMsg || receivedVoiceMsg.mediaType !== 'audio' || receivedVoiceMsg.audioDuration !== 15) {
+    throw new Error(`Voice message payload incorrect: ${JSON.stringify(receivedVoiceMsg)}`);
+  }
+  const voiceMsgId = receivedVoiceMsg._id;
+  console.log(`  ✓ Voice note received: ID ${voiceMsgId}, Duration 15s`);
+
+  // Test 25: Real-time Message Reactions
+  console.log('[25/26] Testing Real-time Message Reactions (reactMessage)...');
+  const reactionPromise = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Timeout waiting for reaction update')), 5000);
+    socket1.once('messageReactionUpdated', (payload) => {
+      clearTimeout(timer);
+      resolve(payload);
+    });
+  });
+
+  socket2.emit('reactMessage', {
+    messageId: voiceMsgId,
+    emoji: '🔥',
+  });
+
+  const reactionPayload = await reactionPromise;
+  if (!reactionPayload || reactionPayload.messageId.toString() !== voiceMsgId.toString() || !reactionPayload.reactions.some(r => r.emoji === '🔥')) {
+    throw new Error(`Reaction update failed: ${JSON.stringify(reactionPayload)}`);
+  }
+  console.log(`  ✓ Message reaction updated in real time with 🔥`);
+
+  // Test 26: Story Deletion
+  console.log('[26/26] Testing Story Deletion (DELETE /api/stories/:id)...');
+  const resDeleteStory = await fetch(`${BASE_URL}/stories/${createdStoryId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${u1Token}` },
+  });
+  const dataDeleteStory = await resDeleteStory.json();
+  if (!resDeleteStory.ok || !dataDeleteStory.success) throw new Error('Failed to delete story');
+  console.log('  ✓ Story deleted successfully');
+
   // Cleanup sockets
   socket1.disconnect();
   socket2.disconnect();
 
   console.log('\n====================================');
-  console.log('  ALL 20 E2E TESTS PASSED SUCCESSFULLY!');
+  console.log('  ALL 26 E2E TESTS PASSED SUCCESSFULLY!');
   console.log('====================================\n');
 };
 
