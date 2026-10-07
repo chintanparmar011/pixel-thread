@@ -103,14 +103,23 @@ export const ChatPage = () => {
       setGroups(userGroups);
 
       if (targetUserIdFromUrl) {
-        const existing = convos.find((c) => c.partner?.id === targetUserIdFromUrl);
+        const existing = convos.find(
+          (c) => (c.partner?._id || c.partner?.id) === targetUserIdFromUrl
+        );
         if (existing) {
           setActiveChat({ isGroup: false, ...existing.partner });
         } else {
           try {
             const historyData = await messageAPI.getChatHistory(targetUserIdFromUrl);
             if (historyData.partner) {
-              setActiveChat({ isGroup: false, ...historyData.partner });
+              const partnerObj = historyData.partner;
+              setActiveChat({ isGroup: false, ...partnerObj });
+              setConversations((prev) => [
+                { partner: partnerObj, lastMessage: null, unreadCount: 0 },
+                ...prev.filter(
+                  (c) => (c.partner?._id || c.partner?.id) !== (partnerObj._id || partnerObj.id)
+                ),
+              ]);
             }
           } catch (e) {
             console.error('Failed to load target chat user:', e.message);
@@ -517,7 +526,7 @@ export const ChatPage = () => {
         <div className="chat-sidebar-header">
           <div className="chat-sidebar-title-row">
             <h2 className="chat-sidebar-title">
-              <MessageSquare size={19} color="#a371f7" /> Messages
+              <MessageSquare size={19} color="var(--accent-primary)" /> Messages
             </h2>
             <button
               onClick={() => setShowCreateGroup(true)}
@@ -580,7 +589,7 @@ export const ChatPage = () => {
               <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                 <p style={{ margin: '0 0 0.5rem 0' }}>No active chats yet.</p>
                 {contacts.length > 0 && (
-                  <p style={{ fontSize: '0.8rem', color: '#8957e5' }}>Select a follower to start chatting!</p>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--accent-primary)', fontWeight: 600 }}>Select a follower to start chatting!</p>
                 )}
               </div>
             ) : (
@@ -654,15 +663,15 @@ export const ChatPage = () => {
                           position: 'absolute',
                           bottom: '-2px',
                           right: '-2px',
-                          backgroundColor: '#8957e5',
+                          backgroundColor: 'var(--accent-primary)',
                           borderRadius: '50%',
                           width: '18px',
                           height: '18px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: 'white',
-                          border: '2px solid #161b22',
+                          color: '#FFFFFF',
+                          border: '2px solid var(--bg-card)',
                         }}
                       >
                         {isPrivate ? <Lock size={10} /> : <Users size={10} />}
@@ -763,7 +772,7 @@ export const ChatPage = () => {
                           Admin:{' '}
                           <span
                             onClick={() => navigate(`/profile/${activeChat.admin?.username || activeChat.admin?._id || activeChat.admin}`)}
-                            style={{ color: '#d2a8ff', cursor: 'pointer', fontWeight: 600 }}
+                            style={{ color: 'var(--accent-primary)', cursor: 'pointer', fontWeight: 600 }}
                             title="View admin profile"
                           >
                             @{activeChat.admin?.username || 'admin'}
@@ -774,7 +783,7 @@ export const ChatPage = () => {
                           {activeChat.participants?.length || 0} members • Admin:{' '}
                           <span
                             onClick={() => navigate(`/profile/${activeChat.admin?.username || activeChat.admin?._id || activeChat.admin}`)}
-                            style={{ color: '#d2a8ff', cursor: 'pointer', fontWeight: 600 }}
+                            style={{ color: 'var(--accent-primary)', cursor: 'pointer', fontWeight: 600 }}
                             title="View admin profile"
                           >
                             @{activeChat.admin?.username || 'admin'}
@@ -835,7 +844,7 @@ export const ChatPage = () => {
             <div className="chat-messages">
               {loadingChat ? (
                 <div style={{ textAlign: 'center', margin: 'auto', padding: '3rem', color: 'var(--text-secondary)' }}>
-                  <Loader2 size={32} className="spin" style={{ margin: '0 auto 0.75rem', color: '#a371f7' }} />
+                  <Loader2 size={32} className="spin" style={{ margin: '0 auto 0.75rem', color: 'var(--accent-primary)' }} />
                   <p style={{ fontSize: '0.85rem' }}>Loading conversation history...</p>
                 </div>
               ) : messages.length === 0 ? (
@@ -844,12 +853,12 @@ export const ChatPage = () => {
                     width: '60px',
                     height: '60px',
                     borderRadius: '50%',
-                    backgroundColor: 'rgba(137, 87, 229, 0.1)',
+                    backgroundColor: 'var(--accent-glow)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     margin: '0 auto 1rem',
-                    color: '#a371f7'
+                    color: 'var(--accent-primary)'
                   }}>
                     <MessageSquare size={26} />
                   </div>
@@ -892,7 +901,7 @@ export const ChatPage = () => {
                         {m.targetUserId && (
                           <div style={{ 
                             fontSize: '0.72rem', 
-                            color: '#d2a8ff', 
+                            color: 'var(--accent-primary)', 
                             marginBottom: '0.3rem', 
                             display: 'flex', 
                             alignItems: 'center', 
@@ -909,7 +918,7 @@ export const ChatPage = () => {
                           <div style={{ marginBottom: '0.25rem' }}>
                             <span 
                               onClick={() => navigate(`/profile/${senderObj.username || senderObj._id || senderId}`)}
-                              style={{ fontSize: '0.78rem', fontWeight: 700, color: '#d2a8ff', cursor: 'pointer' }}
+                              style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent-primary)', cursor: 'pointer' }}
                               title="View profile"
                             >
                               {senderObj.name || senderObj.username || 'Member'}
@@ -1033,18 +1042,18 @@ export const ChatPage = () => {
               {replyingTo && (
                 <div style={{
                   padding: '0.45rem 1rem',
-                  backgroundColor: 'rgba(22, 27, 34, 0.95)',
-                  borderTop: '1px solid rgba(240, 246, 252, 0.1)',
-                  borderLeft: '3px solid #8957e5',
+                  backgroundColor: 'var(--bg-secondary)',
+                  borderTop: '1px solid var(--border-color)',
+                  borderLeft: '3px solid var(--accent-primary)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   gap: '0.75rem',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-                    <Reply size={14} color="#a371f7" style={{ flexShrink: 0 }} />
+                    <Reply size={14} color="var(--accent-primary)" style={{ flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#d2a8ff' }}>
+                      <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--accent-primary)' }}>
                         Replying to @{replyingTo.sender?.username || replyingTo.sender?.name || 'Member'}
                       </div>
                       <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1076,8 +1085,9 @@ export const ChatPage = () => {
               {selectedImagePreview && (
                 <div style={{
                   padding: '0.5rem 1rem',
-                  backgroundColor: 'rgba(22, 27, 34, 0.95)',
-                  borderTop: '1px solid rgba(240, 246, 252, 0.1)',
+                  backgroundColor: 'var(--bg-secondary)',
+                  borderTop: '1px solid var(--border-color)',
+                  borderLeft: '3px solid var(--accent-primary)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.75rem',
@@ -1165,8 +1175,9 @@ export const ChatPage = () => {
                   style={{
                     flex: 1,
                     borderRadius: '9999px',
-                    backgroundColor: 'rgba(13, 17, 23, 0.85)',
-                    border: '1px solid rgba(240, 246, 252, 0.14)',
+                    backgroundColor: 'var(--input-bg)',
+                    color: 'var(--input-text)',
+                    border: '1px solid var(--border-color)',
                     padding: '0.65rem 1.15rem',
                     height: '42px',
                     fontSize: '0.9rem',
@@ -1184,11 +1195,12 @@ export const ChatPage = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: (inputText.trim() || selectedImageFile) ? 'linear-gradient(135deg, #8957e5, #6f42c1)' : 'rgba(255, 255, 255, 0.05)',
-                    color: (inputText.trim() || selectedImageFile) ? '#ffffff' : 'var(--text-secondary)',
+                    backgroundColor: (inputText.trim() || selectedImageFile) ? 'var(--btn-primary-bg)' : 'var(--bg-secondary)',
+                    color: (inputText.trim() || selectedImageFile) ? 'var(--btn-primary-text)' : 'var(--text-muted)',
                     cursor: (inputText.trim() || selectedImageFile) ? 'pointer' : 'not-allowed',
-                    boxShadow: (inputText.trim() || selectedImageFile) ? '0 2px 12px rgba(137, 87, 229, 0.45)' : 'none',
-                    transition: 'all 0.2s ease',
+                    boxShadow: (inputText.trim() || selectedImageFile) ? 'var(--shadow-sm)' : 'none',
+                    border: '1px solid var(--border-color)',
+                    transition: 'all 0.15s ease',
                     flexShrink: 0,
                   }}
                   title="Send message"
@@ -1204,14 +1216,14 @@ export const ChatPage = () => {
               width: '76px',
               height: '76px',
               borderRadius: '50%',
-              backgroundColor: 'rgba(137, 87, 229, 0.12)',
-              border: '1px solid rgba(137, 87, 229, 0.3)',
+              backgroundColor: 'var(--accent-glow)',
+              border: '1px solid rgba(136, 111, 71, 0.3)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 1.25rem',
-              color: '#a371f7',
-              boxShadow: '0 0 24px rgba(137, 87, 229, 0.15)',
+              color: 'var(--accent-primary)',
+              boxShadow: '0 0 24px var(--accent-glow)',
             }}>
               <MessageSquare size={34} />
             </div>
@@ -1294,15 +1306,15 @@ export const ChatPage = () => {
                     style={{
                       padding: '0.75rem 1rem',
                       borderRadius: '8px',
-                      border: `1px solid ${newGroupType === 'standard' ? '#8957e5' : 'var(--border-color)'}`,
+                      border: `1px solid ${newGroupType === 'standard' ? 'var(--accent-primary)' : 'var(--border-color)'}`,
                       cursor: 'pointer',
-                      backgroundColor: newGroupType === 'standard' ? 'rgba(137, 87, 229, 0.15)' : 'transparent',
-                      color: newGroupType === 'standard' ? '#d2a8ff' : 'var(--text-secondary)',
+                      backgroundColor: newGroupType === 'standard' ? 'var(--bg-secondary)' : 'transparent',
+                      color: newGroupType === 'standard' ? 'var(--text-primary)' : 'var(--text-secondary)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '0.5rem',
-                      fontWeight: 600,
+                      fontWeight: 650,
                       fontSize: '0.88rem',
                       transition: 'all 0.15s ease',
                     }}
@@ -1316,15 +1328,15 @@ export const ChatPage = () => {
                     style={{
                       padding: '0.75rem 1rem',
                       borderRadius: '8px',
-                      border: `1px solid ${newGroupType === 'broadcast' ? '#8957e5' : 'var(--border-color)'}`,
+                      border: `1px solid ${newGroupType === 'broadcast' ? 'var(--accent-primary)' : 'var(--border-color)'}`,
                       cursor: 'pointer',
-                      backgroundColor: newGroupType === 'broadcast' ? 'rgba(137, 87, 229, 0.15)' : 'transparent',
-                      color: newGroupType === 'broadcast' ? '#d2a8ff' : 'var(--text-secondary)',
+                      backgroundColor: newGroupType === 'broadcast' ? 'var(--bg-secondary)' : 'transparent',
+                      color: newGroupType === 'broadcast' ? 'var(--text-primary)' : 'var(--text-secondary)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '0.5rem',
-                      fontWeight: 600,
+                      fontWeight: 650,
                       fontSize: '0.88rem',
                       transition: 'all 0.15s ease',
                     }}
@@ -1444,7 +1456,7 @@ export const ChatPage = () => {
                   justifyContent: 'space-between',
                   padding: '0.55rem 0.75rem',
                   borderRadius: '8px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                  backgroundColor: 'var(--bg-secondary)',
                   border: '1px solid var(--border-color)',
                   cursor: 'pointer',
                 }}
@@ -1461,7 +1473,7 @@ export const ChatPage = () => {
                     </div>
                   </div>
                 </div>
-                <span style={{ fontSize: '0.72rem', color: '#a371f7', fontWeight: 600 }}>Profile →</span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--accent-primary)', fontWeight: 600 }}>Profile →</span>
               </div>
             </div>
 

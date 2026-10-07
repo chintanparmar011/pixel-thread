@@ -32,8 +32,9 @@ export const ConfirmModal = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(4px)',
+        backgroundColor: 'var(--modal-overlay)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -52,10 +53,11 @@ export const ConfirmModal = ({
           maxWidth: '420px',
           padding: '1.5rem',
           margin: 0,
-          boxShadow: '0 12px 36px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(240, 246, 252, 0.12)',
+          boxShadow: 'var(--shadow-lg)',
+          border: '1px solid var(--border-color)',
           position: 'relative',
-          backgroundColor: '#161b22',
-          borderRadius: '12px',
+          backgroundColor: 'var(--bg-modal)',
+          borderRadius: '16px',
         }}
       >
         <button
@@ -86,9 +88,9 @@ export const ConfirmModal = ({
               width: '40px',
               height: '40px',
               borderRadius: '50%',
-              backgroundColor: isDanger ? 'rgba(248, 81, 73, 0.15)' : 'rgba(137, 87, 229, 0.15)',
-              border: `1px solid ${isDanger ? 'rgba(248, 81, 73, 0.3)' : 'rgba(137, 87, 229, 0.3)'}`,
-              color: isDanger ? '#f85149' : '#a371f7',
+              backgroundColor: isDanger ? 'rgba(239, 68, 68, 0.15)' : 'var(--accent-glow)',
+              border: `1px solid ${isDanger ? 'rgba(239, 68, 68, 0.3)' : 'rgba(136, 111, 71, 0.3)'}`,
+              color: isDanger ? '#ef4444' : 'var(--accent-primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -123,8 +125,8 @@ export const ConfirmModal = ({
             onClick={onConfirm}
             disabled={loading}
             style={{
-              backgroundColor: isDanger ? '#da3633' : 'var(--accent-purple)',
-              color: '#ffffff',
+              backgroundColor: isDanger ? 'var(--danger)' : 'var(--btn-primary-bg)',
+              color: isDanger ? '#ffffff' : 'var(--btn-primary-text)',
               border: 'none',
               padding: '0.45rem 1.15rem',
               display: 'inline-flex',

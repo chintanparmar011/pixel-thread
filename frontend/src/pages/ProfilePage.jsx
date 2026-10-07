@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { userAPI, socialAPI, authAPI, postAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -16,17 +16,31 @@ import {
   Loader2, 
   X, 
   Trash2,
-  Send
+  Send,
+  Sun,
+  Moon,
+  Calendar,
+  Grid,
+  FileText,
+  Info,
+  Image as ImageIcon,
+  Download,
+  Smartphone
 } from 'lucide-react';
 import { Avatar } from '../components/Avatar';
 import { FollowListModal } from '../components/FollowListModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { useNotifications } from '../context/NotificationContext';
+import { useTheme } from '../context/ThemeContext';
+import { usePwa } from '../context/PwaContext';
 
 export const ProfilePage = () => {
   const { username } = useParams();
+  const navigate = useNavigate();
   const { user: currentUser, updateUser } = useAuth();
   const { showToast } = useNotifications();
+  const { theme, toggleTheme, setTheme, isDark } = useTheme();
+  const { isInstalled, promptInstall } = usePwa();
   const [profileData, setProfileData] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +58,7 @@ export const ProfilePage = () => {
   const [followModalTab, setFollowModalTab] = useState('followers');
 
   // Comments & Likes state for profile posts
+  const [profileTab, setProfileTab] = useState('posts'); // 'posts' | 'photos' | 'about'
   const [activeCommentPostId, setActiveCommentPostId] = useState(null);
   const [commentsMap, setCommentsMap] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
@@ -56,6 +71,12 @@ export const ProfilePage = () => {
   const [editAvatarPreview, setEditAvatarPreview] = useState(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
   const avatarInputRef = useRef(null);
+
+  const [profileCopied, setProfileCopied] = useState(false);
+  const [copiedPostId, setCopiedPostId] = useState(null);
+  const [activeReplyId, setActiveReplyId] = useState(null);
+  const [replyInputs, setReplyInputs] = useState({});
+  const [submittingReply, setSubmittingReply] = useState(false);
 
   const fetchProfile = async () => {
     try {
@@ -221,12 +242,6 @@ export const ProfilePage = () => {
     }
   };
 
-  const [profileCopied, setProfileCopied] = useState(false);
-  const [copiedPostId, setCopiedPostId] = useState(null);
-  const [activeReplyId, setActiveReplyId] = useState(null);
-  const [replyInputs, setReplyInputs] = useState({});
-  const [submittingReply, setSubmittingReply] = useState(false);
-
   const handleShareProfile = async () => {
     const url = `${window.location.origin}/profile/${profileData?.username}`;
     try {
@@ -355,112 +370,157 @@ export const ProfilePage = () => {
     );
   }
 
-  const isSelf = profileData.isSelf || profileData.id === currentUser?.id;
+  const isSelf = profileData.isSelf || (profileData._id || profileData.id) === (currentUser?.id || currentUser?._id);
+  const postsWithImages = posts.filter((p) => Boolean(p.image));
 
   return (
-    <div style={{ maxWidth: '700px', margin: '0 auto', width: '100%' }}>
-      {/* Profile Header Card */}
-      <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1.2rem' }}>
-          <Avatar src={profileData.profilePicture} size={84} />
-
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <h2>{profileData.name}</h2>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.2rem' }}>
-                  <span>@{profileData.username}</span>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                {isSelf ? (
-                  <button onClick={openEditModal} className="btn btn-secondary btn-sm">
-                    <Edit3 size={16} /> Edit Profile
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      onClick={handleToggleFollow}
-                      className={`btn btn-sm ${profileData.isFollowing ? 'btn-secondary' : ''}`}
-                    >
-                      {profileData.isFollowing ? (
-                        <>
-                          <UserCheck size={16} /> Following
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus size={16} /> Follow
-                        </>
-                      )}
-                    </button>
-
-                    <Link to={`/messages?userId=${profileData.id}`} className="btn btn-secondary btn-sm">
-                      <MessageSquare size={16} /> Message
-                    </Link>
-                  </>
-                )}
-
-                <button
-                  onClick={handleShareProfile}
-                  className="btn btn-secondary btn-sm"
-                  title="Share Profile Link"
-                >
-                  {profileCopied ? <Check size={16} color="#10b981" /> : <Share2 size={16} />}
-                  <span>{profileCopied ? 'Copied' : 'Share'}</span>
-                </button>
-              </div>
+    <div style={{ maxWidth: '720px', margin: '0 auto', width: '100%' }}>
+      {/* Editorial Profile Header Card */}
+      <div className="profile-card">
+        <div className="profile-banner" />
+        <div className="profile-header-body">
+          <div className="profile-avatar-row">
+            <div className="profile-avatar-wrap">
+              <Avatar src={profileData.profilePicture} size={92} />
             </div>
 
-            {profileData.bio && (
-              <p style={{ marginTop: '0.8rem', fontSize: '0.95rem', lineHeight: 1.4 }}>
-                {profileData.bio}
-              </p>
+            <div className="profile-actions">
+              {isSelf ? (
+                <>
+                  <button onClick={openEditModal} className="btn btn-secondary btn-sm" style={{ borderRadius: '9999px' }}>
+                    <Edit3 size={15} /> Edit Profile
+                  </button>
+                  <button 
+                    onClick={toggleTheme} 
+                    className="btn btn-secondary btn-sm" 
+                    title={isDark ? "Switch to Light Theme" : "Switch to Dark Theme"}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', borderRadius: '9999px' }}
+                  >
+                    {isDark ? <Sun size={15} /> : <Moon size={15} />}
+                    <span>{isDark ? 'Light' : 'Dark'}</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleToggleFollow}
+                    className={`btn btn-sm ${profileData.isFollowing ? 'btn-secondary' : ''}`}
+                    style={{ borderRadius: '9999px' }}
+                  >
+                    {profileData.isFollowing ? (
+                      <>
+                        <UserCheck size={15} /> Following
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus size={15} /> Follow
+                      </>
+                    )}
+                  </button>
+
+                  <Link to={`/messages?userId=${profileData._id || profileData.id}`} className="btn btn-secondary btn-sm" style={{ borderRadius: '9999px' }}>
+                    <MessageSquare size={15} /> Message
+                  </Link>
+                </>
+              )}
+
+              <button
+                onClick={handleShareProfile}
+                className="btn btn-secondary btn-sm"
+                title="Share Profile Link"
+                style={{ borderRadius: '9999px' }}
+              >
+                {profileCopied ? <Check size={15} color="#10b981" /> : <Share2 size={15} />}
+                <span>{profileCopied ? 'Copied' : 'Share'}</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="profile-identity">
+            <h1 className="profile-name-title">{profileData.name}</h1>
+            <div className="profile-username-tag">@{profileData.username}</div>
+          </div>
+
+          {profileData.bio && (
+            <p className="profile-bio-text">
+              {profileData.bio}
+            </p>
+          )}
+
+          <div className="profile-meta-row">
+            {profileData.createdAt && (
+              <span className="profile-meta-item">
+                <Calendar size={14} /> Joined {new Date(profileData.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+              </span>
             )}
           </div>
-        </div>
 
-        {/* Stats Bar */}
-        <div className="user-stats">
-          <div className="stat-item">
-            <span className="stat-value">{profileData.postsCount || 0}</span>
-            <span className="stat-label">Posts</span>
-          </div>
-          <div
-            className="stat-item"
-            style={{ cursor: 'pointer', userSelect: 'none' }}
-            onClick={() => {
-              setFollowModalTab('followers');
-              setFollowModalOpen(true);
-            }}
-            title="Click to view followers"
-          >
-            <span className="stat-value">{profileData.followersCount || 0}</span>
-            <span className="stat-label">Followers</span>
-          </div>
-          <div
-            className="stat-item"
-            style={{ cursor: 'pointer', userSelect: 'none' }}
-            onClick={() => {
-              setFollowModalTab('following');
-              setFollowModalOpen(true);
-            }}
-            title="Click to view following"
-          >
-            <span className="stat-value">{profileData.followingCount || 0}</span>
-            <span className="stat-label">Following</span>
+          {/* Stats Bar */}
+          <div className="user-stats">
+            <div className="stat-item" onClick={() => setProfileTab('posts')}>
+              <span className="stat-value">{profileData.postsCount || posts.length}</span>
+              <span className="stat-label">Posts</span>
+            </div>
+            <div
+              className="stat-item"
+              onClick={() => {
+                setFollowModalTab('followers');
+                setFollowModalOpen(true);
+              }}
+              title="Click to view followers"
+            >
+              <span className="stat-value">{profileData.followersCount || 0}</span>
+              <span className="stat-label">Followers</span>
+            </div>
+            <div
+              className="stat-item"
+              onClick={() => {
+                setFollowModalTab('following');
+                setFollowModalOpen(true);
+              }}
+              title="Click to view following"
+            >
+              <span className="stat-value">{profileData.followingCount || 0}</span>
+              <span className="stat-label">Following</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* User Posts Stream */}
-      <h3 style={{ margin: '1.5rem 0 1rem', fontSize: '1.1rem' }}>Posts by {profileData.name}</h3>
+      {/* Editorial Profile Navigation Tabs */}
+      <div className="profile-tab-header">
+        <button
+          type="button"
+          onClick={() => setProfileTab('posts')}
+          className={`profile-tab-btn ${profileTab === 'posts' ? 'active' : ''}`}
+        >
+          <FileText size={15} /> Threads ({posts.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setProfileTab('photos')}
+          className={`profile-tab-btn ${profileTab === 'photos' ? 'active' : ''}`}
+        >
+          <Grid size={15} /> Gallery ({postsWithImages.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setProfileTab('about')}
+          className={`profile-tab-btn ${profileTab === 'about' ? 'active' : ''}`}
+        >
+          <Info size={15} /> About
+        </button>
+      </div>
 
-      {posts.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-secondary)' }}>
-          No posts shared yet.
-        </div>
-      ) : (
+      {/* TAB 1: THREADS / POSTS STREAM */}
+      {profileTab === 'posts' && (
+        <div style={{ marginTop: '1.25rem' }}>
+          {posts.length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: '3rem 1.5rem', color: 'var(--text-secondary)' }}>
+              <FileText size={32} style={{ opacity: 0.4, margin: '0 auto 0.75rem' }} />
+              <p style={{ margin: 0 }}>No posts shared yet.</p>
+            </div>
+          ) : (
         posts.map((post) => {
           const postComments = commentsMap[post._id] || [];
           const rootComments = postComments.filter((c) => !c.parentId);
@@ -766,13 +826,188 @@ export const ProfilePage = () => {
           );
         })
       )}
+        </div>
+      )}
+
+      {/* TAB 2: GALLERY / VISUAL GRID */}
+      {profileTab === 'photos' && (
+        <div style={{ marginTop: '1.25rem' }}>
+          {postsWithImages.length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem', color: 'var(--text-secondary)' }}>
+              <ImageIcon size={36} style={{ opacity: 0.35, margin: '0 auto 0.75rem', strokeWidth: 1.5 }} />
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>No visual moments yet</div>
+              <p style={{ margin: 0, fontSize: '0.85rem' }}>Photos shared in threads will appear here in an editorial showcase.</p>
+            </div>
+          ) : (
+            <div className="profile-photo-grid">
+              {postsWithImages.map((post) => (
+                <div
+                  key={post._id}
+                  className="profile-grid-item"
+                  onClick={() => navigate(`/post/${post._id}`)}
+                  title={post.caption || 'View post'}
+                >
+                  <img
+                    src={post.image}
+                    alt={post.caption || 'Post image'}
+                    className="profile-grid-image"
+                    loading="lazy"
+                  />
+                  <div className="profile-grid-overlay">
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <Heart size={16} fill="white" />
+                      {post.likesCount || 0}
+                    </span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <MessageSquare size={16} fill="white" />
+                      {post.commentsCount || 0}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: ABOUT / EDITORIAL DOSSIER */}
+      {profileTab === 'about' && (
+        <div style={{ marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Bio & Intro Card */}
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: '0 0 0.75rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Info size={17} color="var(--accent-primary)" /> About {profileData.name}
+            </h3>
+            <p style={{ margin: 0, fontSize: '0.92rem', lineHeight: 1.6, color: 'var(--text-primary)' }}>
+              {profileData.bio || 'This member has not written a personal biography yet.'}
+            </p>
+          </div>
+
+          {/* Account Details & Journey */}
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Calendar size={17} color="var(--accent-primary)" /> Profile Details
+            </h3>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+              <div style={{ padding: '0.85rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
+                  Handle
+                </div>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                  @{profileData.username}
+                </div>
+              </div>
+
+              <div style={{ padding: '0.85rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
+                  Member Since
+                </div>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                  {profileData.createdAt
+                    ? new Date(profileData.createdAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
+                    : 'Recently joined'}
+                </div>
+              </div>
+
+              <div style={{ padding: '0.85rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
+                  Threads Published
+                </div>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                  {posts.length} stories
+                </div>
+              </div>
+
+              <div style={{ padding: '0.85rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
+                  Gallery Photos
+                </div>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                  {postsWithImages.length} photographs
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Theme & Display Preferences (Self Only) */}
+          {isSelf && (
+            <div className="card" style={{ padding: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: '0 0 0.25rem 0' }}>Appearance</h3>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    Switch between Warm Beige Editorial Light and Mocha Dark themes
+                  </p>
+                </div>
+
+                <div style={{ display: 'inline-flex', padding: '4px', backgroundColor: 'var(--bg-secondary)', borderRadius: '9999px', border: '1px solid var(--border-color)', gap: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setTheme('light')}
+                    className={`btn btn-sm ${!isDark ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ borderRadius: '9999px', padding: '0.35rem 0.85rem', fontSize: '0.8rem', border: 'none' }}
+                  >
+                    <Sun size={14} style={{ marginRight: '0.35rem' }} /> Light
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTheme('dark')}
+                    className={`btn btn-sm ${isDark ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ borderRadius: '9999px', padding: '0.35rem 0.85rem', fontSize: '0.8rem', border: 'none' }}
+                  >
+                    <Moon size={14} style={{ marginRight: '0.35rem' }} /> Dark
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mobile App & Direct Download (PWA) */}
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 750, margin: '0 0 0.25rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Smartphone size={17} color="var(--accent-primary)" /> Mobile Application
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  {isInstalled
+                    ? 'PixelThread is installed in standalone mode on this device.'
+                    : 'Install PixelThread directly to your home screen for fast native interaction.'}
+                </p>
+              </div>
+
+              {!isInstalled && (
+                <button
+                  type="button"
+                  onClick={promptInstall}
+                  className="btn btn-secondary btn-sm"
+                  style={{
+                    borderRadius: '9999px',
+                    padding: '0.45rem 1rem',
+                    fontSize: '0.82rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    fontWeight: 650,
+                  }}
+                >
+                  <Download size={15} color="var(--accent-primary)" /> Add to Home Screen
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Profile Modal */}
       {isEditing && (
         <div style={{
           position: 'fixed',
           inset: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backgroundColor: 'var(--modal-overlay)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

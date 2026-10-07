@@ -115,7 +115,7 @@ export const SearchPage = () => {
       <div className="card" style={{ marginBottom: '1.25rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
           <h2 style={{ fontSize: '1.35rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <TrendingUp size={22} color="#a371f7" /> Explore & Search
+            <TrendingUp size={22} color="var(--accent-primary)" /> Explore & Search
           </h2>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
             Trending posts & community
@@ -138,7 +138,8 @@ export const SearchPage = () => {
               paddingLeft: '2.5rem', 
               paddingRight: query ? '2.5rem' : '1rem',
               borderRadius: '9999px',
-              backgroundColor: 'rgba(13, 17, 23, 0.75)',
+              backgroundColor: 'var(--input-bg)',
+              color: 'var(--input-text)',
               border: '1px solid var(--border-color)',
               height: '44px'
             }}
@@ -199,7 +200,7 @@ export const SearchPage = () => {
               gap: '0.4rem'
             }}
           >
-            <Users size={15} color="#a371f7" /> People ({users.length})
+            <Users size={15} color="var(--accent-primary)" /> People ({users.length})
           </button>
         </div>
       </div>
@@ -286,7 +287,7 @@ export const SearchPage = () => {
 
                       {/* Image Preview (if present) */}
                       {post.image && (
-                        <div style={{ borderRadius: '8px', overflow: 'hidden', marginBottom: '0.6rem', maxHeight: '160px', backgroundColor: '#0d1117' }}>
+                        <div style={{ borderRadius: '8px', overflow: 'hidden', marginBottom: '0.6rem', maxHeight: '160px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
                           <img
                             src={post.image}
                             alt="Post visual"
@@ -301,28 +302,28 @@ export const SearchPage = () => {
                         alignItems: 'center', 
                         gap: '0.85rem', 
                         paddingTop: '0.6rem', 
-                        borderTop: '1px solid rgba(240, 246, 252, 0.08)',
+                        borderTop: '1px solid var(--border-color)',
                         fontSize: '0.78rem',
                         color: 'var(--text-secondary)'
                       }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: post.likesCount > 0 ? '#f43f5e' : 'inherit' }}>
-                          <Heart size={14} fill={post.likesCount > 0 ? '#f43f5e' : 'none'} />
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: post.likesCount > 0 ? 'var(--like-color)' : 'inherit' }}>
+                          <Heart size={14} fill={post.likesCount > 0 ? 'var(--like-color)' : 'none'} />
                           <strong>{post.likesCount || 0}</strong>
                         </span>
 
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: post.commentsCount > 0 ? '#d2a8ff' : 'inherit' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'inherit' }}>
                           <MessageSquare size={14} />
                           <strong>{post.commentsCount || 0}</strong>
                         </span>
 
                         {post.repostsCount > 0 && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: '#3fb950' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--repost-color)' }}>
                             <Repeat size={14} />
                             <strong>{post.repostsCount}</strong>
                           </span>
                         )}
 
-                        <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#8957e5', fontWeight: 600 }}>
+                        <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--accent-primary)', fontWeight: 600 }}>
                           View Post →
                         </span>
                       </div>
@@ -338,7 +339,7 @@ export const SearchPage = () => {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
                 <h3 style={{ fontSize: '1.1rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <Users size={18} color="#a371f7" /> 
+                  <Users size={18} color="var(--accent-primary)" /> 
                   {isSuggestedUsers ? 'People You May Know' : `People Results for "${query}"`}
                 </h3>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
@@ -354,37 +355,40 @@ export const SearchPage = () => {
                 <div className="user-grid">
                   {users.map((u) => (
                     <div key={u._id} className="user-card">
-                      <Link to={`/profile/${u.username}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                        <Avatar src={u.profilePicture} size={48} style={{ margin: '0 auto 0.6rem' }} />
-                        <h3 style={{ fontSize: '0.95rem' }}>{u.name}</h3>
-                        <span className="user-handle">@{u.username}</span>
+                      <Link to={`/profile/${u.username}`} className="user-card-header-link" style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <Avatar src={u.profilePicture} size={48} className="user-card-avatar" />
+                        <div className="user-card-text">
+                          <h4 className="user-card-name">{u.name}</h4>
+                          <span className="user-card-handle">@{u.username}</span>
+                        </div>
                       </Link>
 
-                      <p className="user-bio">{u.bio || 'No bio yet.'}</p>
+                      <p className="user-card-bio">{u.bio || 'No bio yet.'}</p>
 
-                      <div style={{ display: 'flex', gap: '0.5rem', width: '100%', marginTop: 'auto' }}>
+                      <div className="user-card-actions">
                         <button
+                          type="button"
                           onClick={() => handleToggleFollow(u)}
-                          className={`btn btn-sm ${u.isFollowing ? 'btn-secondary' : ''}`}
-                          style={{ flex: 1, justifyContent: 'center' }}
+                          className={`btn btn-sm user-follow-btn ${u.isFollowing ? 'btn-secondary' : ''}`}
                         >
                           {u.isFollowing ? (
                             <>
-                              <UserCheck size={16} /> Following
+                              <UserCheck size={14} /> Following
                             </>
                           ) : (
                             <>
-                              <UserPlus size={16} /> Follow
+                              <UserPlus size={14} /> Follow
                             </>
                           )}
                         </button>
 
                         <button
+                          type="button"
                           onClick={() => navigate(`/messages?userId=${u._id}`)}
-                          className="btn btn-secondary btn-sm"
+                          className="btn btn-secondary btn-sm user-msg-btn"
                           title="Direct Message"
                         >
-                          <MessageSquare size={16} />
+                          <MessageSquare size={15} />
                         </button>
                       </div>
                     </div>

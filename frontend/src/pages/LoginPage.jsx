@@ -71,7 +71,7 @@ export const LoginPage = () => {
             <input
               type="text"
               className="text-input"
-              placeholder="e.g. chintan01 or user@email.com"
+              placeholder="Username or email"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               required
@@ -101,7 +101,7 @@ export const LoginPage = () => {
           Don't have an account?{' '}
           <Link
             to={redirect ? `/signup?redirect=${encodeURIComponent(redirect)}` : '/signup'}
-            style={{ color: '#818cf8', textDecoration: 'none', fontWeight: 600 }}
+            style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}
           >
             Sign Up
           </Link>

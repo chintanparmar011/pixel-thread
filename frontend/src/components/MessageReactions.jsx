@@ -71,9 +71,9 @@ export const MessageReactions = ({
             alignItems: 'center',
             gap: '3px',
             backgroundColor: data.hasReacted
-              ? 'rgba(137, 87, 229, 0.25)'
-              : 'rgba(255, 255, 255, 0.08)',
-            border: `1px solid ${data.hasReacted ? '#8957e5' : 'rgba(255, 255, 255, 0.15)'}`,
+              ? 'var(--bg-active)'
+              : 'var(--bg-secondary)',
+            border: `1px solid ${data.hasReacted ? 'var(--accent-primary)' : 'var(--border-color)'}`,
             borderRadius: '12px',
             padding: '1px 6px',
             fontSize: '0.74rem',
@@ -121,14 +121,14 @@ export const MessageReactions = ({
             left: isOutgoing ? 'auto' : 0,
             right: isOutgoing ? 0 : 'auto',
             marginBottom: '6px',
-            backgroundColor: '#161b22',
-            border: '1px solid #30363d',
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid var(--border-color)',
             borderRadius: '24px',
             padding: '4px 8px',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
+            boxShadow: 'var(--shadow-md)',
             zIndex: 100,
             animation: 'fadeIn 0.15s ease-out',
           }}

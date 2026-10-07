@@ -209,11 +209,12 @@ export const StoryViewerModal = ({
           maxWidth: '420px',
           height: '92vh',
           maxHeight: '780px',
-          backgroundColor: '#0d1117',
+          backgroundColor: '#141210',
           borderRadius: '16px',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
+          border: '1px solid rgba(229, 221, 211, 0.12)',
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.8)',
         }}
         onMouseDown={handlePause}

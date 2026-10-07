@@ -399,8 +399,8 @@ export const CallModal = ({
         position: 'fixed',
         inset: 0,
         zIndex: 10000,
-        backgroundColor: 'rgba(13, 17, 23, 0.94)',
-        backdropFilter: 'blur(12px)',
+        backgroundColor: 'rgba(28, 26, 24, 0.92)',
+        backdropFilter: 'blur(16px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -413,14 +413,14 @@ export const CallModal = ({
           width: '100%',
           maxWidth: '740px',
           height: '540px',
-          backgroundColor: '#161b22',
+          backgroundColor: 'var(--bg-modal, #1C1A18)',
           borderRadius: '20px',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
           position: 'relative',
-          border: '1px solid rgba(240, 246, 252, 0.14)',
-          boxShadow: '0 24px 64px rgba(0, 0, 0, 0.8), 0 0 36px rgba(137, 87, 229, 0.25)',
+          border: '1px solid var(--border-color, rgba(229, 221, 211, 0.2))',
+          boxShadow: '0 24px 64px rgba(0, 0, 0, 0.6), 0 0 36px rgba(136, 111, 71, 0.2)',
         }}
       >
         {/* Top Header */}
@@ -430,8 +430,8 @@ export const CallModal = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            borderBottom: '1px solid rgba(240, 246, 252, 0.1)',
-            backgroundColor: 'rgba(22, 27, 34, 0.96)',
+            borderBottom: '1px solid var(--border-color, rgba(229, 221, 211, 0.15))',
+            backgroundColor: 'var(--bg-card, #26231F)',
             backdropFilter: 'blur(8px)',
             zIndex: 10,
           }}
@@ -439,7 +439,7 @@ export const CallModal = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
             <Avatar src={partnerUser?.profilePicture} size={42} />
             <div>
-              <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#f0f6fc' }}>
+              <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary, #FAF7F2)' }}>
                 {partnerUser?.name || partnerUser?.username}
               </h4>
               <div style={{ fontSize: '0.76rem', color: statusText === 'Connected' ? '#3fb950' : '#8b949e', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -460,9 +460,9 @@ export const CallModal = ({
           <span 
             style={{ 
               textTransform: 'capitalize',
-              backgroundColor: 'rgba(137, 87, 229, 0.15)',
-              color: '#d2a8ff',
-              border: '1px solid rgba(137, 87, 229, 0.35)',
+              backgroundColor: 'rgba(136, 111, 71, 0.15)',
+              color: 'var(--accent-primary, #886F47)',
+              border: '1px solid rgba(136, 111, 71, 0.35)',
               padding: '0.25rem 0.85rem',
               borderRadius: '9999px',
               fontSize: '0.78rem',
@@ -482,7 +482,7 @@ export const CallModal = ({
           style={{
             flex: 1,
             position: 'relative',
-            backgroundColor: '#0d1117',
+            backgroundColor: '#141210',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -520,12 +520,12 @@ export const CallModal = ({
                   borderRadius: '50%',
                   background: isIncoming && !callAccepted
                     ? 'radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, transparent 70%)'
-                    : 'radial-gradient(circle, rgba(137, 87, 229, 0.3) 0%, transparent 70%)',
+                    : 'radial-gradient(circle, rgba(136, 111, 71, 0.35) 0%, transparent 70%)',
                   animation: 'pulseDot 2s infinite ease-in-out',
                 }} />
                 <Avatar src={partnerUser?.profilePicture} size={104} style={{ position: 'relative', zIndex: 1 }} />
               </div>
-              <h3 style={{ color: '#f0f6fc', margin: '0 0 0.35rem 0', fontSize: '1.2rem', fontWeight: 700 }}>
+              <h3 style={{ color: 'var(--text-primary, #FAF7F2)', margin: '0 0 0.35rem 0', fontSize: '1.2rem', fontWeight: 700 }}>
                 {partnerUser?.name || partnerUser?.username}
               </h3>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>
@@ -545,8 +545,8 @@ export const CallModal = ({
                 height: '110px',
                 borderRadius: '12px',
                 overflow: 'hidden',
-                border: '1px solid rgba(240, 246, 252, 0.2)',
-                backgroundColor: '#21262d',
+                border: '1px solid rgba(229, 221, 211, 0.2)',
+                backgroundColor: '#26231F',
                 boxShadow: '0 8px 24px rgba(0, 0, 0, 0.7)',
                 zIndex: 5,
               }}
@@ -575,8 +575,8 @@ export const CallModal = ({
             alignItems: 'center',
             justifyContent: 'center',
             gap: '1.5rem',
-            backgroundColor: 'rgba(22, 27, 34, 0.98)',
-            borderTop: '1px solid rgba(240, 246, 252, 0.1)',
+            backgroundColor: 'var(--bg-card, #26231F)',
+            borderTop: '1px solid var(--border-color, rgba(229, 221, 211, 0.15))',
             zIndex: 10,
           }}
         >

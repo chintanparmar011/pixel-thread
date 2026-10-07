@@ -89,8 +89,9 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
         position: 'fixed',
         inset: 0,
         zIndex: 10001,
-        backgroundColor: 'rgba(13, 17, 23, 0.85)',
+        backgroundColor: 'var(--modal-overlay)',
         backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -106,9 +107,9 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
           maxWidth: '540px',
           padding: '1.4rem',
           margin: 0,
-          backgroundColor: '#161b22',
-          border: '1px solid rgba(240, 246, 252, 0.15)',
-          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.7), 0 0 24px rgba(137, 87, 229, 0.2)',
+          backgroundColor: 'var(--bg-modal)',
+          border: '1px solid var(--border-color)',
+          boxShadow: 'var(--shadow-lg)',
           borderRadius: '16px',
         }}
         onClick={(e) => e.stopPropagation()}
@@ -116,7 +117,7 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 style={{ margin: 0, fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-            <Sparkles size={18} color="#a371f7" /> New Post
+            <Sparkles size={18} color="var(--accent-primary)" /> New Post
           </h3>
           <button
             type="button"
@@ -169,7 +170,7 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
 
           {/* Image Preview */}
           {imagePreview && (
-            <div style={{ position: 'relative', display: 'block', marginBottom: '1rem', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(240, 246, 252, 0.12)', maxHeight: '240px', backgroundColor: '#0d1117' }}>
+            <div style={{ position: 'relative', display: 'block', marginBottom: '1rem', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--border-color)', maxHeight: '240px', backgroundColor: 'var(--bg-secondary)' }}>
               <img
                 src={imagePreview}
                 alt="Upload preview"
@@ -201,7 +202,7 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
           )}
 
           {/* Actions Bar */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid rgba(240, 246, 252, 0.1)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
             <div>
               <input
                 type="file"
@@ -217,7 +218,7 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isSubmitting}
                 title="Attach photo"
-                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#a371f7' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--accent-primary)' }}
               >
                 <ImageIcon size={18} />
                 <span style={{ fontSize: '0.82rem' }}>{imageFile ? 'Change Photo' : 'Add Photo'}</span>
@@ -239,13 +240,15 @@ export const CreatePostModal = ({ isOpen, onClose, onPostCreated }) => {
                 className="btn btn-sm"
                 disabled={isSubmitting || (!text.trim() && !imageFile)}
                 style={{
-                  borderRadius: '9999px',
-                  padding: '0.45rem 1.25rem',
+                  borderRadius: '10px',
+                  padding: '0.5rem 1.35rem',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.4rem',
-                  background: 'linear-gradient(135deg, #8957e5, #6f42c1)',
-                  fontWeight: 600,
+                  backgroundColor: 'var(--btn-primary-bg)',
+                  color: 'var(--btn-primary-text)',
+                  fontWeight: 650,
+                  boxShadow: 'var(--shadow-sm)',
                 }}
               >
                 {isSubmitting ? (

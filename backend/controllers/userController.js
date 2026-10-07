@@ -92,6 +92,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
 
   res.json({
     user: {
+      _id: user._id,
       id: user._id,
       name: user.name,
       username: user.username,

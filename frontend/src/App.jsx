@@ -14,6 +14,8 @@ import { AdminPage } from './pages/AdminPage';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { InstallPwaBanner } from './components/InstallPwaBanner';
+import { ThemeProvider } from './context/ThemeContext';
+import { PwaProvider } from './context/PwaContext';
 import { Loader2 } from 'lucide-react';
 import './App.css';
 
@@ -64,12 +66,14 @@ const PublicRoute = ({ children }) => {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <SocketProvider>
-          <NotificationProvider>
-            <CallProvider>
-              <div className="app-container">
+    <ThemeProvider>
+      <PwaProvider>
+        <BrowserRouter>
+        <AuthProvider>
+          <SocketProvider>
+            <NotificationProvider>
+              <CallProvider>
+                <div className="app-container">
               <Routes>
                 {/* Public Routes */}
                 <Route
@@ -165,6 +169,8 @@ function App() {
         </SocketProvider>
       </AuthProvider>
     </BrowserRouter>
+      </PwaProvider>
+    </ThemeProvider>
   );
 }
 

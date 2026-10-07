@@ -187,12 +187,12 @@ export const VoiceRecorder = ({ onSendVoice, disabled = false }) => {
           onClick={finishAndSend}
           disabled={isUploading}
           style={{
-            backgroundColor: '#8957e5',
+            backgroundColor: 'var(--btn-primary-bg)',
             border: 'none',
             borderRadius: '50%',
             width: '28px',
             height: '28px',
-            color: 'white',
+            color: 'var(--btn-primary-text)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

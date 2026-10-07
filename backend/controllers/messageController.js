@@ -27,6 +27,7 @@ const getConversations = asyncHandler(async (req, res) => {
     if (!conversationMap.has(partnerId)) {
       conversationMap.set(partnerId, {
         partner: {
+          _id: partner._id,
           id: partner._id,
           name: partner.name,
           username: partner.username,
@@ -84,6 +85,7 @@ const getChatHistory = asyncHandler(async (req, res) => {
 
   res.json({
     partner: {
+      _id: targetUser._id,
       id: targetUser._id,
       name: targetUser.name,
       username: targetUser.username,

@@ -63,8 +63,9 @@ export const CreateStoryModal = ({ isOpen, onClose, onStoryCreated }) => {
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        backdropFilter: 'blur(5px)',
+        backgroundColor: 'var(--modal-overlay)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -84,7 +85,9 @@ export const CreateStoryModal = ({ isOpen, onClose, onStoryCreated }) => {
           width: '100%',
           maxWidth: '440px',
           padding: '1.5rem',
-          backgroundColor: '#161b22',
+          backgroundColor: 'var(--bg-modal)',
+          border: '1px solid var(--border-color)',
+          boxShadow: 'var(--shadow-lg)',
           borderRadius: '16px',
           position: 'relative',
         }}
@@ -111,7 +114,7 @@ export const CreateStoryModal = ({ isOpen, onClose, onStoryCreated }) => {
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-          <Sparkles size={20} color="#a371f7" />
+          <Sparkles size={20} color="var(--accent-primary)" />
           <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>Add to Story</h3>
         </div>
 
@@ -128,12 +131,12 @@ export const CreateStoryModal = ({ isOpen, onClose, onStoryCreated }) => {
             <div
               onClick={() => fileInputRef.current?.click()}
               style={{
-                border: '2px dashed rgba(137, 87, 229, 0.4)',
+                border: '2px dashed var(--border-hover)',
                 borderRadius: '12px',
                 padding: '2.5rem 1rem',
                 textAlign: 'center',
                 cursor: 'pointer',
-                backgroundColor: 'rgba(137, 87, 229, 0.05)',
+                backgroundColor: 'var(--bg-secondary)',
                 transition: 'border-color 0.2s',
                 display: 'flex',
                 flexDirection: 'column',
@@ -147,16 +150,16 @@ export const CreateStoryModal = ({ isOpen, onClose, onStoryCreated }) => {
                   width: '50px',
                   height: '50px',
                   borderRadius: '50%',
-                  backgroundColor: 'rgba(137, 87, 229, 0.15)',
+                  backgroundColor: 'var(--bg-hover)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#a371f7',
+                  color: 'var(--accent-primary)',
                 }}
               >
                 <ImageIcon size={26} />
               </div>
-              <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Select Photo for Story</div>
+              <div style={{ fontWeight: 650, fontSize: '0.95rem', color: 'var(--text-primary)' }}>Select Photo for Story</div>
               <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                 Visible to your followers for 24 hours
               </p>
@@ -171,7 +174,8 @@ export const CreateStoryModal = ({ isOpen, onClose, onStoryCreated }) => {
                   maxHeight: '360px',
                   objectFit: 'contain',
                   borderRadius: '12px',
-                  backgroundColor: '#0d1117',
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-color)',
                 }}
               />
               <button

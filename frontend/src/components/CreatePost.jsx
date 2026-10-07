@@ -83,13 +83,14 @@ export const CreatePost = ({ onPostCreated }) => {
           <textarea
             className="textarea-input"
             rows="2"
-            placeholder="What is happening?!"
+            placeholder="Share what's on your mind..."
             value={text}
             onChange={(e) => setText(e.target.value)}
             disabled={isSubmitting}
             style={{ 
               border: 'none', 
               background: 'transparent', 
+              color: 'var(--text-primary)',
               padding: '0.4rem 0',
               fontSize: '1rem',
               boxShadow: 'none',

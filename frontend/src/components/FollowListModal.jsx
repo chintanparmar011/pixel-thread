@@ -91,7 +91,8 @@ export const FollowListModal = ({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        backgroundColor: 'var(--backdrop)',
+        backdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -196,7 +197,7 @@ export const FollowListModal = ({
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '0.7rem 0',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                    borderBottom: '1px solid var(--border-color)',
                   }}
                 >
                   <Link

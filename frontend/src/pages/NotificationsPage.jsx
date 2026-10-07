@@ -282,13 +282,13 @@ export const NotificationsPage = () => {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
           <div>
             <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-              <Sparkles size={18} color="#a371f7" /> People You May Know
+              <Sparkles size={18} color="var(--accent-primary)" /> People You May Know
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: '0.15rem 0 0 0' }}>
               Connect with active creators in PixelThread
             </p>
           </div>
-          <Link to="/search" style={{ fontSize: '0.8rem', color: '#a371f7', textDecoration: 'none', fontWeight: 600 }}>
+          <Link to="/search" style={{ fontSize: '0.8rem', color: 'var(--accent-primary)', textDecoration: 'none', fontWeight: 600 }}>
             Find More →
           </Link>
         </div>

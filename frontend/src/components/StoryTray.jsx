@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Sparkles } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { storyAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Avatar } from './Avatar';
@@ -9,7 +9,7 @@ import { StoryViewerModal } from './StoryViewerModal';
 export const StoryTray = () => {
   const { user: currentUser } = useAuth();
   const [trayUsers, setTrayUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   // Modals
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -22,7 +22,7 @@ export const StoryTray = () => {
       setLoading(true);
       const data = await storyAPI.getFeed();
       setTrayUsers(data.tray || []);
-    } catch (err) {
+    } catch {
       // Fail silently for background status tray
       setTrayUsers([]);
     } finally {
@@ -31,7 +31,8 @@ export const StoryTray = () => {
   }, [currentUser]);
 
   useEffect(() => {
-    fetchStories();
+    const timer = setTimeout(fetchStories, 0);
+    return () => clearTimeout(timer);
   }, [fetchStories]);
 
   const myGroup = trayUsers.find((g) => g.isOwner);
@@ -53,7 +54,7 @@ export const StoryTray = () => {
     setViewerModalOpen(true);
   };
 
-  const handleStoryCreated = (newStory) => {
+  const handleStoryCreated = () => {
     fetchStories();
   };
 
@@ -68,9 +69,9 @@ export const StoryTray = () => {
         style={{
           marginBottom: '1.25rem',
           padding: '0.9rem 1rem',
-          backgroundColor: '#161b22',
-          border: '1px solid #30363d',
-          borderRadius: '12px',
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-color)',
+          borderRadius: '16px',
           overflow: 'hidden',
         }}
       >
@@ -105,10 +106,10 @@ export const StoryTray = () => {
                 width: '58px',
                 height: '58px',
                 borderRadius: '50%',
-                padding: '2.5px',
+                padding: '2px',
                 background:
                   myGroup?.stories?.length > 0
-                    ? 'linear-gradient(45deg, #f778ba, #8957e5, #58a6ff)'
+                    ? 'var(--story-self-ring)'
                     : 'transparent',
                 display: 'flex',
                 alignItems: 'center',
@@ -120,7 +121,7 @@ export const StoryTray = () => {
                   width: '100%',
                   height: '100%',
                   borderRadius: '50%',
-                  backgroundColor: '#161b22',
+                  backgroundColor: 'var(--bg-card)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -144,8 +145,8 @@ export const StoryTray = () => {
                   width: '22px',
                   height: '22px',
                   borderRadius: '50%',
-                  backgroundColor: '#8957e5',
-                  border: '2px solid #161b22',
+                  backgroundColor: '#2D2A26',
+                  border: '2px solid #FFFFFF',
                   color: '#ffffff',
                   display: 'flex',
                   alignItems: 'center',
@@ -198,17 +199,14 @@ export const StoryTray = () => {
                     width: '58px',
                     height: '58px',
                     borderRadius: '50%',
-                    padding: '2.5px',
+                    padding: '2px',
                     background: hasUnseen
-                      ? 'linear-gradient(45deg, #f778ba, #8957e5, #58a6ff)'
-                      : '#30363d',
-                    boxShadow: hasUnseen
-                      ? '0 0 10px rgba(137, 87, 229, 0.45)'
-                      : 'none',
+                      ? 'linear-gradient(135deg, var(--story-ring-start), var(--story-ring-end))'
+                      : 'var(--story-viewed-ring)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    transition: 'transform 0.2s',
+                    transition: 'transform 0.15s ease',
                   }}
                   className="story-avatar-ring"
                 >
@@ -217,7 +215,7 @@ export const StoryTray = () => {
                       width: '100%',
                       height: '100%',
                       borderRadius: '50%',
-                      backgroundColor: '#161b22',
+                      backgroundColor: 'var(--bg-card)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',

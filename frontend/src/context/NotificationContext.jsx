@@ -187,7 +187,7 @@ export const NotificationProvider = ({ children }) => {
           <Avatar src={toastNotification.sender?.profilePicture} size={36} />
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: '0.82rem', color: '#d2a8ff', marginBottom: '0.15rem' }}>
+            <div style={{ fontWeight: 650, fontSize: '0.82rem', color: 'var(--accent-primary)', marginBottom: '0.15rem' }}>
               Notification
             </div>
             <div style={{ fontSize: '0.83rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -237,16 +237,16 @@ export const NotificationProvider = ({ children }) => {
             top: '20px',
             right: '20px',
             zIndex: 10000,
-            backgroundColor: 'var(--bg-secondary)',
+            backgroundColor: 'var(--bg-card)',
             border: `1px solid ${
               appToast.type === 'error'
                 ? 'var(--danger)'
                 : appToast.type === 'success'
                 ? 'var(--success)'
-                : 'var(--accent-color)'
+                : 'var(--accent-primary)'
             }`,
-            boxShadow: '0 8px 28px rgba(0, 0, 0, 0.6)',
-            borderRadius: '10px',
+            boxShadow: 'var(--shadow-md)',
+            borderRadius: '12px',
             padding: '0.75rem 1.1rem',
             display: 'flex',
             alignItems: 'center',
@@ -257,7 +257,7 @@ export const NotificationProvider = ({ children }) => {
         >
           {appToast.type === 'error' && <AlertCircle size={20} color="var(--danger)" style={{ flexShrink: 0 }} />}
           {appToast.type === 'success' && <CheckCircle2 size={20} color="var(--success)" style={{ flexShrink: 0 }} />}
-          {appToast.type !== 'error' && appToast.type !== 'success' && <Sparkles size={20} color="#d2a8ff" style={{ flexShrink: 0 }} />}
+          {appToast.type !== 'error' && appToast.type !== 'success' && <Sparkles size={20} color="var(--accent-primary)" style={{ flexShrink: 0 }} />}
 
           <span style={{ fontSize: '0.88rem', color: 'var(--text-primary)', flex: 1, wordBreak: 'break-word' }}>
             {appToast.text}

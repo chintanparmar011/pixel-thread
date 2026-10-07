@@ -151,7 +151,7 @@ export const SignupPage = () => {
             <input
               type="text"
               className="text-input"
-              placeholder="e.g. Parmar Chintan"
+              placeholder="Your full name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -165,7 +165,7 @@ export const SignupPage = () => {
             <input
               type="text"
               className="text-input"
-              placeholder="e.g. chintan01"
+              placeholder="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -179,7 +179,7 @@ export const SignupPage = () => {
             <input
               type="email"
               className="text-input"
-              placeholder="e.g. user@example.com"
+              placeholder="name@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -209,7 +209,7 @@ export const SignupPage = () => {
           Already have an account?{' '}
           <Link
             to={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login'}
-            style={{ color: '#818cf8', textDecoration: 'none', fontWeight: 600 }}
+            style={{ color: 'var(--accent-color)', textDecoration: 'none', fontWeight: 600 }}
           >
             Sign In
           </Link>

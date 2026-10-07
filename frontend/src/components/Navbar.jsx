@@ -6,21 +6,23 @@ import {
   Home, 
   Search, 
   MessageSquare, 
-  User as UserIcon, 
   ShieldAlert, 
   LogOut,
   Bell,
   Sparkles,
-  PlusSquare
+  PlusSquare,
+  Download
 } from 'lucide-react';
 
 import { Avatar } from './Avatar';
 import { NotificationDropdown } from './NotificationDropdown';
 import { CreatePostModal } from './CreatePostModal';
+import { usePwa } from '../context/PwaContext';
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
+  const { isInstalled, promptInstall } = usePwa();
   const navigate = useNavigate();
 
   const [showDropdown, setShowDropdown] = useState(false);
@@ -60,7 +62,7 @@ export const Navbar = () => {
               width: '28px', 
               height: '28px', 
               borderRadius: '8px', 
-              background: 'linear-gradient(135deg, #a371f7, #8957e5)',
+              background: 'var(--accent-primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -84,8 +86,29 @@ export const Navbar = () => {
             <MessageSquare size={19} />
           </NavLink>
 
+          {/* Install App Direct Button (PWA) */}
+          {!isInstalled && (
+            <button
+              type="button"
+              onClick={promptInstall}
+              className="btn btn-secondary btn-sm pwa-install-header-btn"
+              title="Install PixelThread App"
+              style={{
+                borderRadius: '9999px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                fontSize: '0.78rem',
+                padding: '0.32rem 0.75rem',
+              }}
+            >
+              <Download size={14} color="var(--accent-primary)" />
+              <span className="pwa-install-text">Install App</span>
+            </button>
+          )}
+
           {/* Notification Bell Dropdown */}
-          <div ref={dropdownRef} style={{ position: 'relative' }}>
+          <div ref={dropdownRef} className="header-notification-wrap" style={{ position: 'relative' }}>
             <button
               onClick={() => setShowDropdown((prev) => !prev)}
               className={`notification-bell-btn ${showDropdown ? 'active' : ''}`}
@@ -108,10 +131,11 @@ export const Navbar = () => {
           {/* Profile Quick Link */}
           <Link 
             to={`/profile/${user.username}`} 
+            className="header-profile-link"
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'inherit' }}
           >
             <Avatar src={user.profilePicture} size={32} />
-            <span style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+            <span style={{ fontWeight: 650, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
               @{user.username}
             </span>
           </Link>
@@ -143,16 +167,15 @@ export const Navbar = () => {
           <Search size={22} />
         </NavLink>
 
-        {/* Center Create Post Button */}
+        {/* Center Create Post Button - Compact Emphasized */}
         <button 
           type="button"
           onClick={() => setShowCreateModal(true)} 
-          className="bottom-nav-item"
+          className="bottom-nav-create-btn"
           title="Create Post"
           aria-label="Create Post"
-          style={{ background: 'none', border: 'none', cursor: 'pointer' }}
         >
-          <PlusSquare size={22} />
+          <PlusSquare size={20} />
         </button>
 
         <NavLink 

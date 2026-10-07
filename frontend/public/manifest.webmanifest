@@ -1,12 +1,12 @@
 {
-  "name": "PixelThread - Developer Social Network",
+  "name": "PixelThread",
   "short_name": "PixelThread",
-  "description": "The fast, modern developer social media network with 24-hour stories, voice memos, and rich chat.",
+  "description": "Editorial lifestyle social media network with 24-hour stories, voice notes, and rich community threads.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0d1117",
-  "theme_color": "#8957e5",
+  "background_color": "#FAF7F2",
+  "theme_color": "#2D2A26",
   "icons": [
     {
       "src": "/favicon.svg",
